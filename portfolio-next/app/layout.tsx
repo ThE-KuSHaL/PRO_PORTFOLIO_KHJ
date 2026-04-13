@@ -11,15 +11,24 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: 'Kushal H J — Builder, IoT Engineer, Entrepreneur',
-  description:
-    'Portfolio of Kushal H J — AI-powered systems, IoT platforms, and funded ventures built at the intersection of hardware and cloud.',
-  keywords: ['IoT', 'AI', 'entrepreneur', 'QUIRK TECHNOLOGIES', 'VVCE', 'portfolio'],
+  title: "Know Kushal H J | Portfolio",
+  description: "Official portfolio of Kushal H J. Projects, Resume, Skills, Experience and Contact.",
+  keywords: [
+    "Kushal H J",
+    "Kushal H J Portfolio",
+    "Kushal H J Resume",
+    "Know Kushal H J",
+    "Kushal H J Developer",
+    "Kushal H J Mysuru"
+  ],
+  authors: [{ name: "Kushal H J" }],
+  creator: "Kushal H J",
+  metadataBase: new URL("https://pro-portfolio-khj-djwg.vercel.app"),
   openGraph: {
-    title: 'Kushal H J — Builder, IoT Engineer, Entrepreneur',
-    description: 'AI-powered systems, IoT platforms, funded ventures.',
-    type: 'website',
-  },
+    title: "Know Kushal H J",
+    description: "Official portfolio of Kushal H J",
+    type: "website"
+  }
 };
 
 export default function RootLayout({

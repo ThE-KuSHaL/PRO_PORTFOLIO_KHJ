@@ -1,0 +1,323 @@
+'use client';
+import { useState, useRef, useMemo } from 'react';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { ChevronDown, ChevronRight, X, Sparkles } from 'lucide-react';
+import SectionLabel from '@/components/ui/SectionLabel';
+import { semesterData } from '@/lib/data';
+
+// --- Types & Data ---
+
+const TIMELINE_MAP = {
+  '10th': {
+    id: '10th',
+    year: '2019–2020', label: '10th Grade', sub: 'SSLC — Sri Venkateshwara High School, Mysuru',
+    note: 'First exposure to computers. Curiosity began.', isBE: false,
+    fruitSize: 16, pos: { cx: 880, cy: 520 }
+  },
+  'puc': {
+    id: 'puc',
+    year: '2021–2023', label: '11th & 12th Grade (PUC)', sub: 'PCMB — JSS PU College, Mysuru',
+    note: 'First Python script in 12th grade. Everything changed.', isBE: false,
+    fruitSize: 28, pos: { cx: 580, cy: 400 }
+  },
+  'be': {
+    id: 'be',
+    year: '2024–present', label: 'B.E. Information Science Engineering', sub: 'Vidyavardhaka College of Engineering (VVCE), Mysuru',
+    note: 'Beyond the syllabus. Building real systems.', isBE: true,
+    fruitSize: 46, pos: { cx: 220, cy: 300 }
+  }
+};
+type NodeId = keyof typeof TIMELINE_MAP;
+
+// --- Components ---
+
+const AnimatedPath = ({ 
+  d, 
+  duration = 6, 
+  delay = 0, 
+  strokeWidth = 2, 
+  color = "#06b6d4" 
+}: { 
+  d: string, 
+  duration?: number, 
+  delay?: number, 
+  strokeWidth?: number,
+  color?: string
+}) => (
+  <>
+    {/* Static Dim Base Path */}
+    <motion.path 
+      d={d} fill="none" stroke={color} strokeWidth={strokeWidth} strokeOpacity={0.08}
+      initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ margin: '100px' }}
+      transition={{ duration: 3, ease: "easeOut", delay: delay * 0.2 }} 
+    />
+    {/* Animated Glowing Pulse */}
+    <motion.path 
+      d={d} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"
+      initial={{ pathLength: 0.2, pathOffset: -0.2, opacity: 0 }}
+      whileInView={{ pathOffset: [0, 1], opacity: [0, 1, 1, 0] }}
+      viewport={{ margin: '100px' }}
+      transition={{ 
+        duration, 
+        delay, 
+        repeat: Infinity, 
+        ease: "easeInOut",
+        repeatDelay: Math.random() * 2 
+      }}
+      style={{ filter: `drop-shadow(0 0 ${strokeWidth * 2}px ${color})` }} 
+    />
+  </>
+);
+
+const DigitalBud = ({ cx, cy, delay = 0 }: { cx: number, cy: number, delay?: number }) => (
+  <motion.g 
+    initial={{ scale: 0, opacity: 0 }} 
+    whileInView={{ scale: 1, opacity: 1 }} 
+    viewport={{ margin: '50px' }} 
+    transition={{ delay, duration: 1 }}
+  >
+    <rect x={cx-2} y={cy-2} width={4} height={4} fill="#06b6d4" transform={`rotate(45 ${cx} ${cy})`} />
+    <motion.rect 
+      x={cx-4} y={cy-4} width={8} height={8} fill="none" stroke="#06b6d4" strokeWidth={0.5} 
+      transform={`rotate(45 ${cx} ${cy})`}
+      animate={{ opacity: [0.2, 0.8, 0.2] }} transition={{ repeat: Infinity, duration: 2, delay: Math.random() }}
+    />
+  </motion.g>
+);
+
+export default function EducationSection() {
+  const ref = useRef<HTMLElement>(null);
+  const isInView = useInView(ref, { once: true, margin: '-80px' });
+  const [activeNode, setActiveNode] = useState<NodeId>('be');
+  const [openSem, setOpenSem] = useState<number | null>(null);
+
+  const activeData = TIMELINE_MAP[activeNode];
+
+  // Memoized path data for performance and density
+  const treePaths = useMemo(() => ([
+    // --- MAIN TRUNK ---
+    { d: "M 1150 950 C 1100 800, 1050 650, 950 500", w: 12, dur: 5, del: 0 },
+    { d: "M 1160 960 Q 1120 750, 960 510", w: 4, dur: 4.5, del: 0.2 },
+    
+    // --- ROOTS ---
+    { d: "M 1150 950 Q 1180 1000, 1250 1050", w: 6, dur: 3, del: 0, c: "#6366f1" },
+    { d: "M 1150 950 Q 1100 980, 1000 1050", w: 4, dur: 3.5, del: 0.1, c: "#6366f1" },
+    { d: "M 1120 900 Q 1050 920, 900 1000", w: 2, dur: 4, del: 0.3, c: "#6366f1" },
+    
+    // --- BRANCH: 10th (Shortest / Closest) ---
+    { d: "M 950 500 C 920 520, 890 480, 880 520", w: 4, dur: 3, del: 1 },
+    { d: "M 950 505 Q 900 550, 880 520", w: 1, dur: 2.5, del: 1.2 },
+    
+    // --- BRANCH: MAIN CANOPY (To PUC & BE) ---
+    { d: "M 950 500 C 850 400, 750 450, 580 400", w: 8, dur: 5, del: 1 },
+    { d: "M 880 435 Q 800 350, 700 380", w: 2, dur: 4, del: 1.5 },
+    { d: "M 700 380 Q 650 350, 580 400", w: 2, dur: 3.5, del: 2 },
+    
+    // --- BRANCH: THE REACH (To BE) ---
+    { d: "M 580 400 C 450 300, 350 250, 220 300", w: 6, dur: 5, del: 2.5 },
+    { d: "M 480 340 Q 400 280, 220 300", w: 1.5, dur: 4, del: 3 },
+    
+    // --- TERTIARY FILLER / CIRCUITRY TENDRILLS ---
+    { d: "M 980 650 Q 920 700, 850 680", w: 1, dur: 3, del: 0.5 },
+    { d: "M 850 680 Q 800 650, 750 670", w: 1, dur: 4, del: 1.5 },
+    { d: "M 750 200 Q 800 150, 900 180", w: 1.5, dur: 5, del: 2 },
+    { d: "M 520 365 Q 450 420, 350 400", w: 1, dur: 3.8, del: 2.2 },
+    { d: "M 350 150 Q 250 100, 100 120", w: 1, dur: 4.5, del: 3.5 },
+    { d: "M 180 320 Q 100 250, 20 280", w: 1.5, dur: 3, del: 4 },
+    { d: "M 600 450 Q 650 500, 720 480", w: 0.8, dur: 3.2, del: 1.8 },
+  ]), []);
+
+  return (
+    <section id="education" ref={ref} aria-label="Education"
+      style={{
+        position: 'relative',
+        minHeight: '120vh',
+        width: '100%',
+        overflow: 'hidden',
+        background: '#020617',
+      }}
+    >
+      {/* Title placed top left */}
+      <div style={{ position: 'absolute', top: '8%', left: 'clamp(2rem, 6vw, 6rem)', zIndex: 10 }}>
+        <SectionLabel color="#6366f1">Education</SectionLabel>
+        <h2 style={{ fontSize: 'clamp(2rem,4vw,3.5rem)', fontWeight: 700, marginBottom: '0.25rem', color: '#f0f4ff', textShadow: '0 4px 20px rgba(0,0,0,0.8)' }}>
+          The roots.
+        </h2>
+        <p style={{ fontSize: '0.95rem', color: 'rgba(255,255,255,0.6)', maxWidth: '400px' }}>
+          Growing through logic. Energy pulses from roots (oldest) to branch tips (newest).
+        </p>
+      </div>
+
+      {/* SVG Canvas covering background */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+        <svg width="100%" height="100%" viewBox="0 0 1200 1000" preserveAspectRatio="xMidYMid slice">
+          {/* Definitions for Glow Filters */}
+          <defs>
+            <filter id="fruitGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="8" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          {/* Render All Background Paths */}
+          {treePaths.map((p, i) => (
+            <AnimatedPath key={i} d={p.d} strokeWidth={p.w} duration={p.dur} delay={p.del} color={p.c} />
+          ))}
+
+          {/* Decorative Junction Nodes (PCB Junctions) */}
+          <DigitalBud cx={950} cy={500} delay={0.5} />
+          <DigitalBud cx={580} cy={400} delay={1.2} />
+          <DigitalBud cx={880} cy={435} delay={1} />
+          <DigitalBud cx={1150} cy={950} delay={0.1} />
+          <DigitalBud cx={700} cy={380} delay={1.8} />
+
+          {/* Render The 3 Main Interactive Fruits */}
+          {Object.values(TIMELINE_MAP).map((node, i) => {
+            const isActive = activeNode === node.id;
+            return (
+              <g key={node.id} style={{ cursor: 'pointer' }} onClick={() => setActiveNode(node.id as NodeId)}>
+                {/* Hitbox */}
+                <circle cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize * 1.5} fill="transparent" />
+                
+                {/* Outer Glow Circles */}
+                <motion.circle 
+                  cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize + 8} 
+                  fill="none" stroke="#06b6d4" strokeWidth={1} strokeDasharray="4 4"
+                  animate={{ rotate: 360, opacity: [0.1, 0.4, 0.1] }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} 
+                />
+                
+                {/* Pulsing Core */}
+                <motion.circle 
+                  cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize / 2} 
+                  fill={isActive ? '#06b6d4' : '#6366f1'} 
+                  animate={{ 
+                    scale: isActive ? [1, 1.15, 1] : [1, 1.05, 1],
+                    boxShadow: isActive ? '0 0 30px #06b6d4' : '0 0 10px rgba(99,102,241,0.5)'
+                  }}
+                  transition={{ repeat: Infinity, duration: isActive ? 1.5 : 3 }}
+                  style={{ filter: isActive ? 'url(#fruitGlow)' : 'none' }}
+                />
+
+                {/* Growth Ring */}
+                <motion.circle 
+                  cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize} 
+                  fill="none" stroke={isActive ? '#06b6d4' : 'rgba(255,255,255,0.2)'} 
+                  strokeWidth={2}
+                  animate={isActive ? { scale: [1, 1.2, 1], opacity: [0.8, 0.2, 0.8] } : {}}
+                  transition={{ repeat: Infinity, duration: 2.5 }}
+                />
+
+                {/* Label text */}
+                <text 
+                  x={node.pos.cx} y={node.pos.cy + node.fruitSize + 25} 
+                  fill="#fff" textAnchor="middle" 
+                  fontSize={node.id === 'be' ? 22 : 16} 
+                  fontWeight={isActive ? 800 : 400}
+                  style={{ pointerEvents: 'none', filter: 'drop-shadow(0 2px 6px rgba(0,0,0,1))' }}
+                >
+                  {node.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Floating Info Glass Panel */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeNode}
+          initial={{ opacity: 0, x: -50, filter: 'blur(10px)' }}
+          whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+          exit={{ opacity: 0, x: -50, filter: 'blur(10px)' }}
+          transition={{ duration: 0.5, ease: 'backOut' }}
+          style={{
+            position: 'absolute', bottom: '6%', left: 'clamp(1rem, 5vw, 5rem)', zIndex: 20, 
+            width: '90%', maxWidth: '520px',
+            background: 'rgba(3,8,16,0.75)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            padding: '1.75rem',
+            borderRadius: 24,
+            border: '1px solid rgba(6,182,212,0.2)',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.8), inset 0 0 30px rgba(6,182,212,0.03)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ padding: '4px 12px', background: 'rgba(6,182,212,0.1)', borderRadius: 20, border: '1px solid rgba(6,182,212,0.2)' }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#06b6d4', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+                {activeData.year}
+              </span>
+            </div>
+            <Sparkles size={16} color={activeData.isBE ? "#06b6d4" : "#6366f1"} />
+          </div>
+
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', marginBottom: 8, letterSpacing: '-0.02em', textShadow: '0 2px 15px rgba(0,0,0,0.5)' }}>
+            {activeData.label}
+          </h3>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.85)', lineHeight: 1.5, marginBottom: 10 }}>
+            {activeData.sub}
+          </p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '10px 14px', borderRadius: 12, borderLeft: `3px solid ${activeData.id === '10th' ? '#6366f1' : '#06b6d4'}` }}>
+             <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', fontStyle: 'italic', margin: 0, lineHeight: 1.4 }}>
+               {activeData.note}
+             </p>
+          </div>
+
+          {activeData.isBE && (
+            <div style={{ marginTop: '2rem' }}>
+              <div style={{ height: 1, background: 'linear-gradient(90deg, rgba(6,182,212,0.4), transparent)', marginBottom: '1rem' }} />
+              <h4 style={{ fontSize: '0.75rem', fontWeight: 800, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                Integrated Academic Modules
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {semesterData.map((sem, si) => (
+                  <div key={sem.sem} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                    <button
+                      onClick={() => setOpenSem(openSem === si ? null : si)}
+                      style={{
+                        display: 'flex', alignItems: 'center', width: '100%',
+                        padding: '12px 16px', background: openSem === si ? 'rgba(6,182,212,0.05)' : 'transparent', 
+                        border: 'none', cursor: 'pointer', transition: '0.2s', color: '#f0f4ff'
+                      }}
+                    >
+                      {openSem === si ? <ChevronDown size={14} color="#06b6d4" /> : <ChevronRight size={14} color="rgba(255,255,255,0.4)" />}
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, marginLeft: 10 }}>Semester {sem.sem}</span>
+                      <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', marginLeft: 'auto', fontWeight: 500 }}>{sem.period}</span>
+                    </button>
+
+                    <AnimatePresence>
+                      {openSem === si && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: 'circOut' }}
+                        >
+                          <div style={{ padding: '4px 16px 16px 40px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                            <div>
+                              <p style={{ fontSize: '0.65rem', fontWeight: 800, color: '#06b6d4', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>Core Courses</p>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                {sem.courses.map((c) => <div key={c} style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.3 }}>· {c}</div>)}
+                              </div>
+                            </div>
+                            <div>
+                              <p style={{ fontSize: '0.65rem', fontWeight: 800, color: '#6366f1', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>Key Projects</p>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                {sem.projects.map((p) => <div key={p} style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.3 }}>⚡ {p}</div>)}
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </section>
+  );
+}

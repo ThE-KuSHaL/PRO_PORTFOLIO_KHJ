@@ -1,7 +1,7 @@
 'use client';
 // components/hero/KHJEmblem.tsx
-import { useState, useRef, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import React, { useState, useRef, useEffect } from 'react';
+import { AnimatePresence, motion, Variants } from 'framer-motion';
 import LatchCards from './LatchCards';
 
 interface KHJEmblemProps {
@@ -97,20 +97,20 @@ export default function KHJEmblem({ visible, size = 220 }: KHJEmblemProps) {
   }
 
   // Layer-by-layer 3D printer variants
-  const layerVariants = {
+  const layerVariants: Variants = {
     hidden: { z: -30, opacity: 0 },
-    visible: (targetZ: number) => ({
-      z: targetZ,
+    visible: (custom: any) => ({
+      z: custom,
       opacity: 1,
       transition: {
         // Delay scales with targetZ so upper layers assemble later (3D print style)
-        z: { type: 'spring', stiffness: 100, damping: 15, delay: 0.1 + targetZ * 0.015 },
-        opacity: { duration: 0.5, delay: 0.1 + targetZ * 0.015 }
+        z: { type: 'spring' as const, stiffness: 100, damping: 15, delay: 0.1 + custom * 0.015 },
+        opacity: { duration: 0.5, delay: 0.1 + custom * 0.015 }
       }
     }),
-    tap: (targetZ: number) => ({
-      z: targetZ * 0.15, // Compress layers down like a real mechanical button
-      transition: { type: 'spring', stiffness: 500, damping: 25 }
+    tap: (custom: any) => ({
+      z: custom * 0.15, // Compress layers down like a real mechanical button
+      transition: { type: 'spring' as const, stiffness: 500, damping: 25 }
     })
   };
 

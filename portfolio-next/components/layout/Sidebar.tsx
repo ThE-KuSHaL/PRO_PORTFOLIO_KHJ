@@ -13,7 +13,17 @@ export default function Sidebar() {
   const [active, setActive] = useState('hero');
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const obsRef = useRef<IntersectionObserver | null>(null);
+
+  // Detect mobile via media query (avoids SSR mismatch)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     obsRef.current = new IntersectionObserver(
@@ -67,11 +77,8 @@ export default function Sidebar() {
           backdropFilter: 'blur(20px)',
           borderRight: '1px solid rgba(99,102,241,0.1)',
           transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1), transform 0.3s ease',
-          transform: mobileOpen || (typeof window !== 'undefined' && window.innerWidth >= 768)
-            ? 'translateX(0)'
-            : 'translateX(-100%)',
+          transform: (mobileOpen || !isMobile) ? 'translateX(0)' : 'translateX(-100%)',
         }}
-        className={`max-md:${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 mb-8 w-full">
@@ -111,7 +118,7 @@ export default function Sidebar() {
                     padding: '8px 12px',
                     borderRadius: 8,
                     border: 'none',
-                    cursor: 'none',
+                    cursor: 'pointer',
                     background: isact ? 'rgba(6,182,212,0.1)' : 'transparent',
                     color: isact ? '#06b6d4' : 'rgba(255,255,255,0.45)',
                     transition: 'background 0.2s, color 0.2s',
@@ -152,7 +159,7 @@ export default function Sidebar() {
             border: '1px solid rgba(99,102,241,0.3)',
             background: 'transparent',
             color: 'rgba(255,255,255,0.4)',
-            cursor: 'none',
+            cursor: 'pointer',
             transition: 'all 0.2s',
           }}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}

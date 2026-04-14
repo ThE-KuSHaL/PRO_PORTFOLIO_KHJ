@@ -256,13 +256,73 @@ function SinglePin({ pin, isOpen, onToggle }: { pin: PinConfig; isOpen: boolean;
   );
 }
 
+// ─── Mobile card grid ─────────────────────────────────────────────────────────
+function MobileContactCards() {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy(value: string) {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+      {PINS.map((pin) => {
+        const Icon = pin.icon;
+        return (
+          <motion.div
+            key={pin.id}
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            onClick={() => {
+              if (pin.action === 'copy' && pin.value) handleCopy(pin.value);
+              else if (pin.action === 'link' && pin.href) window.open(pin.href, '_blank', 'noopener,noreferrer');
+              else if (pin.action === 'download' && pin.href) { const a = document.createElement('a'); a.href = pin.href; a.download = ''; a.click(); }
+            }}
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 10, padding: '1.25rem 1rem', borderRadius: 14,
+              border: `1px solid ${pin.accent}40`,
+              background: `${pin.accent}0a`,
+              cursor: 'pointer', textAlign: 'center',
+            }}
+          >
+            <div style={{ width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${pin.accent}18`, border: `1px solid ${pin.accent}44` }}>
+              <Icon size={20} color={pin.accent} />
+            </div>
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f0f4ff' }}>{pin.label}</span>
+            {pin.action === 'copy' && pin.value && (
+              <span style={{ fontSize: '0.65rem', color: copied ? '#22c55e' : 'rgba(255,255,255,0.4)', wordBreak: 'break-all' }}>
+                {copied ? 'Copied ✓' : pin.value}
+              </span>
+            )}
+            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: pin.accent }}>{pin.btnLabel} →</span>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main section ─────────────────────────────────────────────────────────────
 const MAP_W = 860;
 const MAP_H = Math.round(MAP_W * (7 / 16)); // 16:7
 
 export default function ContactSection() {
   const [openPin, setOpenPin] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -294,44 +354,48 @@ export default function ContactSection() {
         Building something ambitious? Need an IoT system or AI-powered product? Drop a pin.
       </p>
 
-      {/* Map */}
-      <div
-        ref={mapContainerRef}
-        style={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: MAP_W,
-          aspectRatio: '16 / 7',
-          borderRadius: 8,
-          border: '1px solid rgba(6,182,212,0.2)',
-          overflow: 'visible',
-          boxShadow: '0 0 60px rgba(6,182,212,0.05), 0 0 120px rgba(99,102,241,0.04)',
-        }}
-      >
-        {/* map background */}
-        <div style={{ position: 'absolute', inset: 0, borderRadius: 8, overflow: 'hidden' }}>
-          <CyberMap width={MAP_W} height={MAP_H} />
-        </div>
+      {/* Mobile: card grid | Desktop: cyber map */}
+      {isMobile ? (
+        <MobileContactCards />
+      ) : (
+        <div
+          ref={mapContainerRef}
+          style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: MAP_W,
+            aspectRatio: '16 / 7',
+            borderRadius: 8,
+            border: '1px solid rgba(6,182,212,0.2)',
+            overflow: 'visible',
+            boxShadow: '0 0 60px rgba(6,182,212,0.05), 0 0 120px rgba(99,102,241,0.04)',
+          }}
+        >
+          {/* map background */}
+          <div style={{ position: 'absolute', inset: 0, borderRadius: 8, overflow: 'hidden' }}>
+            <CyberMap width={MAP_W} height={MAP_H} />
+          </div>
 
-        {/* Map label */}
-        <div style={{
-          position: 'absolute', bottom: 8, right: 12,
-          fontSize: '0.58rem', fontFamily: 'monospace',
-          color: 'rgba(6,182,212,0.25)', letterSpacing: '0.14em', pointerEvents: 'none',
-        }}>
-          MYSURU · KARNATAKA · INDIA
-        </div>
+          {/* Map label */}
+          <div style={{
+            position: 'absolute', bottom: 8, right: 12,
+            fontSize: '0.58rem', fontFamily: 'monospace',
+            color: 'rgba(6,182,212,0.25)', letterSpacing: '0.14em', pointerEvents: 'none',
+          }}>
+            MYSURU · KARNATAKA · INDIA
+          </div>
 
-        {/* Pins */}
-        {PINS.map(pin => (
-          <SinglePin
-            key={pin.id}
-            pin={pin}
-            isOpen={openPin === pin.id}
-            onToggle={() => setOpenPin(prev => prev === pin.id ? null : pin.id)}
-          />
-        ))}
-      </div>
+          {/* Pins */}
+          {PINS.map(pin => (
+            <SinglePin
+              key={pin.id}
+              pin={pin}
+              isOpen={openPin === pin.id}
+              onToggle={() => setOpenPin(prev => prev === pin.id ? null : pin.id)}
+            />
+          ))}
+        </div>
+      )}
 
       <p style={{ marginTop: '2.5rem', fontSize: '0.72rem', color: 'rgba(255,255,255,0.18)', letterSpacing: '0.06em' }}>
         Built by Kushal H J · QUIRK TECHNOLOGIES · 2025

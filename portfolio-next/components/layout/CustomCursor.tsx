@@ -50,8 +50,18 @@ export default function CustomCursor() {
   const glowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [hovering,   setHovering]   = useState(false);
   const [isClicking, setIsClicking] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   useEffect(() => {
+    // Disable custom cursor on touch/pointer: coarse (phones/tablets)
+    const mq = window.matchMedia('(pointer: coarse)');
+    if (mq.matches) {
+      setIsTouchDevice(true);
+      // Restore default cursor on body for mobile
+      document.body.style.cursor = 'auto';
+      return;
+    }
+
     const cross = crossRef.current;
     const dot   = dotRef.current;
     if (!cross || !dot) return;
@@ -114,6 +124,9 @@ export default function CustomCursor() {
   const perpDrift = hovering ? 1.2  : 0.6;
   const rotDrift  = hovering ? 1.6  : 0.8;
   const scalePulse = hovering ? 1.04 : 1.04; // ~0.4px on 10px arm ≈ 4%
+
+  // Don't render custom cursor on touch devices
+  if (isTouchDevice) return null;
 
   return (
     <div

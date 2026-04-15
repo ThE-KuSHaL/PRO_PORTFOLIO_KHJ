@@ -22,6 +22,10 @@ const CustomCursor = dynamic(
   () => import('@/components/layout/CustomCursor'),
   { ssr: false }
 );
+const ClickSpark = dynamic(
+  () => import('@/components/ui/ClickSpark'),
+  { ssr: false }
+);
 const Sidebar = dynamic(
   () => import('@/components/layout/Sidebar'),
   { ssr: false }
@@ -38,6 +42,9 @@ export default function Home() {
 
       {/* Custom cursor */}
       <CustomCursor />
+
+      {/* Click spark effect — fires on every click site-wide */}
+      <ClickSpark sparkColor="#06b6d4" sparkCount={10} sparkSize={14} duration={500} />
 
       {/* Collapsible sidebar navigation */}
       <Sidebar />

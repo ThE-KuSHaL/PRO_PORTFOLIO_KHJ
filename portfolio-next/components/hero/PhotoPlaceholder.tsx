@@ -51,14 +51,15 @@ export default function PhotoPlaceholder() {
         </div>
       )}
 
-      {/* LightRays — volumetric beams rising from the bottom of the photo */}
+      {/* LightRays — prominent volumetric beams, fades as user scrolls away */}
       <LightRays
-        rayCount={10}
+        rayCount={12}
         color="rgba(6,182,212,"
         colorAlt="rgba(99,102,241,"
-        maxOpacity={0.22}
-        speed={0.7}
-        blur={35}
+        maxOpacity={0.45}
+        speed={0.8}
+        blur={24}
+        fadeOnScroll={true}
         style={{ zIndex: 2 }}
       />
 

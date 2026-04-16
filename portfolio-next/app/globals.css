@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ── THEME ── */
-@theme inline {
+@theme {
   --color-bg:     #030810;
   --color-indigo: #6366f1;
   --color-cyan:   #06b6d4;
@@ -134,7 +134,5 @@ body {
   /* ⑨ Contact section — ensure grid card layout is readable */
   #contact { padding-left: clamp(1rem, 4vw, 1.5rem) !important; padding-right: clamp(1rem, 4vw, 1.5rem) !important; }
 
-  /* ⑩ General — prevent any horizontal scroll */
-  * { max-width: 100vw; }
   img, svg { max-width: 100%; }
 }

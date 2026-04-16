@@ -90,6 +90,16 @@ export default function EducationSection() {
   const isInView = useInView(ref, { once: true, margin: '-80px' });
   const [activeNode, setActiveNode] = useState<NodeId>('be');
   const [openSem, setOpenSem] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile to switch between overlay (desktop) and stacked (mobile) layout
+  useState(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+  });
 
   const activeData = TIMELINE_MAP[activeNode];
 
@@ -131,14 +141,23 @@ export default function EducationSection() {
     <section id="education" ref={ref} aria-label="Education"
       style={{
         position: 'relative',
-        minHeight: '120vh',
+        minHeight: isMobile ? 'auto' : '120vh',
         width: '100%',
         overflow: 'hidden',
         background: '#020617',
+        // On mobile: flex column so SVG is above, panel is below
+        display: isMobile ? 'flex' : 'block',
+        flexDirection: 'column',
       }}
     >
       {/* Title placed top left */}
-      <div style={{ position: 'absolute', top: '8%', left: 'clamp(2rem, 6vw, 6rem)', zIndex: 10 }}>
+      <div style={{
+        position: isMobile ? 'relative' : 'absolute',
+        top: isMobile ? undefined : '8%',
+        left: isMobile ? undefined : 'clamp(2rem, 6vw, 6rem)',
+        zIndex: 10,
+        padding: isMobile ? '2rem 1.5rem 0.5rem' : undefined,
+      }}>
         <SectionLabel color="#6366f1">Education</SectionLabel>
         <h2 style={{ fontSize: 'clamp(2rem,4vw,3.5rem)', fontWeight: 700, marginBottom: '0.25rem', color: '#f0f4ff', textShadow: '0 4px 20px rgba(0,0,0,0.8)' }}>
           The roots.
@@ -148,8 +167,14 @@ export default function EducationSection() {
         </p>
       </div>
 
-      {/* SVG Canvas covering background */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+      {/* SVG Canvas — full background on desktop, compact strip on mobile */}
+      <div style={{
+        position: isMobile ? 'relative' : 'absolute',
+        inset: isMobile ? undefined : 0,
+        height: isMobile ? 280 : undefined,
+        zIndex: 0,
+        overflow: 'hidden',
+      }}>
         <svg width="100%" height="100%" viewBox="0 0 1200 1000" preserveAspectRatio="xMidYMid slice">
           {/* Definitions for Glow Filters */}
           <defs>
@@ -232,8 +257,13 @@ export default function EducationSection() {
           exit={{ opacity: 0, x: -50, filter: 'blur(10px)' }}
           transition={{ duration: 0.5, ease: 'backOut' }}
           style={{
-            position: 'absolute', bottom: '6%', left: 'clamp(1rem, 5vw, 5rem)', zIndex: 20, 
-            width: '90%', maxWidth: '520px',
+            position: isMobile ? 'relative' : 'absolute',
+            bottom: isMobile ? undefined : '6%',
+            left: isMobile ? undefined : 'clamp(1rem, 5vw, 5rem)',
+            zIndex: 20,
+            margin: isMobile ? '0 1rem 2rem' : undefined,
+            width: isMobile ? 'auto' : '90%',
+            maxWidth: '520px',
             background: 'rgba(3,8,16,0.75)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
@@ -241,6 +271,8 @@ export default function EducationSection() {
             borderRadius: 24,
             border: '1px solid rgba(6,182,212,0.2)',
             boxShadow: '0 20px 50px rgba(0,0,0,0.8), inset 0 0 30px rgba(6,182,212,0.03)',
+            overflowY: isMobile ? 'auto' : undefined,
+            maxHeight: isMobile ? '60vh' : undefined,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -294,7 +326,7 @@ export default function EducationSection() {
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.3, ease: 'circOut' }}
                         >
-                          <div style={{ padding: '4px 16px 16px 40px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                          <div style={{ padding: '4px 16px 16px 40px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 12 : 20 }}>
                             <div>
                               <p style={{ fontSize: '0.65rem', fontWeight: 800, color: '#06b6d4', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>Core Courses</p>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

@@ -3,6 +3,10 @@
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
+
+// LightRays is canvas-based — load client-side only
+const LightRays = dynamic(() => import('@/components/ui/LightRays'), { ssr: false });
 
 export default function PhotoPlaceholder() {
   const [imgError, setImgError] = useState(false);
@@ -20,6 +24,7 @@ export default function PhotoPlaceholder() {
         left: 0,
         pointerEvents: 'none',
         zIndex: 0,
+        overflow: 'hidden',
       }}
     >
       {!imgError ? (
@@ -30,9 +35,7 @@ export default function PhotoPlaceholder() {
           style={{
             objectFit: 'cover',
             objectPosition: 'left bottom',
-            // Flips X, then translates negatively on the flipped axis (moves it visually RIGHT)
             transform: 'scaleX(-1) translateX(-8%)',
-            // Brighten up the photo and add a subtle cyan drop-shadow to separate from the PCB background
             filter: 'brightness(1.15) contrast(1.05) drop-shadow(0 0 40px rgba(6,182,212,0.2))'
           }}
           onError={() => setImgError(true)}
@@ -48,12 +51,33 @@ export default function PhotoPlaceholder() {
         </div>
       )}
 
-      {/* Subtle left margin fade so it blends into the left column softly, without darkening the human */}
+      {/* LightRays — volumetric beams rising from the bottom of the photo */}
+      <LightRays
+        rayCount={10}
+        color="rgba(6,182,212,"
+        colorAlt="rgba(99,102,241,"
+        maxOpacity={0.22}
+        speed={0.7}
+        blur={35}
+        style={{ zIndex: 2 }}
+      />
+
+      {/* Left margin fade — blends into left column */}
       <div
         aria-hidden="true"
         style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(to right, rgba(3,8,16,1) 0%, rgba(3,8,16,0) 25%)',
+          position: 'absolute', inset: 0, zIndex: 3,
+          background: 'linear-gradient(to right, rgba(3,8,16,1) 0%, rgba(3,8,16,0) 28%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Bottom vignette — so photo doesn't feel cut-off */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: '30%', zIndex: 3,
+          background: 'linear-gradient(to top, rgba(3,8,16,0.6) 0%, transparent 100%)',
           pointerEvents: 'none',
         }}
       />

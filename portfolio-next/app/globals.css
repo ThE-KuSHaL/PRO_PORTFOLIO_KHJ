@@ -95,60 +95,46 @@ body {
 /* ── LED GLOW ── */
 .led-on { box-shadow: 0 0 6px 2px currentColor; }
 
-/* ── MOBILE ── */
+/* ── MOBILE — portrait mode ── */
 @media (max-width: 767px) {
-  /* Restore normal cursor on touch devices */
+  /* ① Restore normal cursor on touch devices */
   body { cursor: auto !important; }
   a, button, [role="button"] { cursor: pointer !important; }
 
-  /* Sections: remove sidebar offset, use safe horizontal padding */
+  /* ② Wipe sidebar left-offset from ALL sections */
   section {
-    padding-left: clamp(1rem, 4vw, 2rem) !important;
-    padding-right: clamp(1rem, 4vw, 2rem) !important;
+    padding-left: clamp(1rem, 4vw, 1.5rem) !important;
+    padding-right: clamp(1rem, 4vw, 1.5rem) !important;
   }
 
-  /* Hero: single column, full width */
-  #hero {
+  /* ③ Hero — allow full-width single-column (handled in JSX via isMobile state) */
+  #hero { padding: 0 !important; }
+
+  /* ④ Skills + Projects grids → single column */
+  #skills  > div[style],
+  #projects > div[style] {
     grid-template-columns: 1fr !important;
-    padding-left: 1.5rem !important;
-    padding-right: 1.5rem !important;
-    padding-top: 5rem !important;
   }
 
-  /* Hide photo on mobile (already using max-md:hidden, belt-and-suspenders) */
-  #hero > div:last-of-type {
-    display: none !important;
-  }
-
-  /* KHJ Emblem — scale down for small screens */
-  #hero svg[width="220"],
-  #hero div[style*="width: 220"] {
-    transform: scale(0.8);
-    transform-origin: left center;
-  }
-
-  /* About: single column */
-  #about > div[style*="grid-template-columns"] {
+  /* ⑤ About grid → single column */
+  #about > div[style] {
     grid-template-columns: 1fr !important;
     gap: 1.5rem !important;
   }
 
-  /* Projects / Skills: ensure cards don't overflow */
-  #projects > div,
-  #skills > div {
-    grid-template-columns: 1fr !important;
-  }
+  /* ⑥ Journey SVG text — slightly smaller so labels fit */
+  #journey text { font-size: 10px !important; }
 
-  /* Journey SVG: make text readable at small sizes */
-  #journey text {
-    font-size: 11px !important;
-  }
+  /* ⑦ Education title area — ensure no extra offset */
+  #education { padding-left: 0 !important; padding-right: 0 !important; }
 
-  /* Education section: shift glass panel to top on mobile */
-  #education > div[style*="bottom: 6%"] {
-    bottom: auto !important;
-    top: 180px !important;
-    max-height: 60vh;
-    overflow-y: auto;
-  }
+  /* ⑧ Venture progress bar area */
+  #venture { padding-left: clamp(1rem, 4vw, 1.5rem) !important; padding-right: clamp(1rem, 4vw, 1.5rem) !important; }
+
+  /* ⑨ Contact section — ensure grid card layout is readable */
+  #contact { padding-left: clamp(1rem, 4vw, 1.5rem) !important; padding-right: clamp(1rem, 4vw, 1.5rem) !important; }
+
+  /* ⑩ General — prevent any horizontal scroll */
+  * { max-width: 100vw; }
+  img, svg { max-width: 100%; }
 }

@@ -16,8 +16,10 @@ export default function CustomCursor() {
       return;
     }
 
-    const el = containerRef.current;
-    if (!el) return;
+    // containerRef.current is non-null here: isTouchDevice guard already returned early,
+    // and the DOM is mounted. The ! assertion tells TS we've verified this.
+    if (!containerRef.current) return;
+    const el = containerRef.current;  // HTMLDivElement, narrowed by the check above
 
     // ── State tracked as plain refs (no React re-renders) ──
     let mx = -200, my = -200;          // mouse position
@@ -39,8 +41,6 @@ export default function CustomCursor() {
       const dt = Math.min((ts - lastTs) / 1000, 0.05); // seconds, capped
       lastTs = ts;
       t += dt;
-
-      if (!el) return;
 
       // Move container to exact pointer position — translate3d = GPU composited
       el.style.transform = `translate3d(${mx}px,${my}px,0)`;

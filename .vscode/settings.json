@@ -1,0 +1,24 @@
+{
+  // ── CSS Linter ──────────────────────────────────────────────────────────────
+  // Tailwind v4 uses non-standard at-rules (@theme, @import "tailwindcss", etc.)
+  // VS Code's built-in CSS validator doesn't know about these — suppress those warnings.
+  "css.lint.unknownAtRules": "ignore",
+  "css.validate": false,
+
+  // ── TypeScript ──────────────────────────────────────────────────────────────
+  // Use the workspace version of TypeScript (installed in node_modules) so type
+  // checking matches the build exactly and IDE squiggles stay in sync.
+  "typescript.tsdk": "portfolio-next/node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // ── Tailwind IntelliSense ───────────────────────────────────────────────────
+  // Point the Tailwind CSS IntelliSense extension at the right config location.
+  "tailwindCSS.experimental.configFile": "portfolio-next/tailwind.config.ts",
+
+  // ── File associations ───────────────────────────────────────────────────────
+  // Treat .css files inside the Next.js app as PostCSS so Tailwind directives
+  // are recognised without triggering the standard CSS validator.
+  "files.associations": {
+    "*.css": "tailwindcss"
+  }
+}

@@ -1,8 +1,6 @@
 'use client';
 // components/ui/LightRays.tsx
-// Inspired by React Bits LightRays — prominent animated volumetric light beams
-// with scroll-fade: opacity drops to 0 as the hero scrolls out of view
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface LightRaysProps {
   rayCount?: number;

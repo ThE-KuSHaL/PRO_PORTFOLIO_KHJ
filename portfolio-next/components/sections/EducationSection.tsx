@@ -100,6 +100,8 @@ export default function EducationSection() {
           mixBlendMode: 'screen',
           filter: activeNode ? 'blur(6px) brightness(0.5)' : 'none',
           transition: 'filter 0.5s ease',
+          maskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 100%)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 100%)',
         }}>
            <Image src="/poetic-cyber-tree.png" alt="Cyber Tree" fill style={{ objectFit: 'contain', objectPosition: 'center right' }} priority />
         </div>

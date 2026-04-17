@@ -224,7 +224,7 @@ export default function EducationSection() {
         </div>
 
         {/* Tree Animation "Fruits" — layered perfectly over the image */}
-        <svg width="100%" height="100%" viewBox="0 0 1200 1000" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0 }}>
+        <svg width="100%" height="100%" viewBox="0 0 1200 1000" preserveAspectRatio="xMaxYMid meet" style={{ position: 'absolute', inset: 0 }}>
           {/* Definitions for Glow Filters */}
           <defs>
             <filter id="fruitGlow" x="-50%" y="-50%" width="200%" height="200%">

@@ -10,7 +10,7 @@ const CHIPS = [
   '2nd Year · ISE',
   'Funded Project · Active',
   'VVCE, Mysuru',
-  'IIT Bombay TechFest Winner',
+  'AI Systems Builder',
 ];
 
 export default function AboutSection() {
@@ -127,7 +127,7 @@ export default function AboutSection() {
           {[
             'It started with curiosity — how do machines talk to each other? That single question sent me down a rabbit hole that never ended.',
             'I\'m an ISE student at VVCE, Mysuru, but the real engineering happens far outside the syllabus. I build backend systems, AI-powered workflows using LLMs, and IoT pipelines that bridge physical hardware to cloud infrastructure.',
-            'I co-founded QUIRK TECHNOLOGIES and shipped three real products: FLOW (gas sensing IoT), DHARMAJYOTI (AI legal companion), and VAHANA (IoT AQI system that won IIT Bombay TechFest).',
+            'I co-founded QUIRK TECHNOLOGIES and shipped three real products: FLOW (gas sensing IoT), DHARMAJYOTI (AI legal companion), and KAVACH (AI-based fraud detection system).',
             'Right now I\'m building a funded B2B venture at the intersection of CAD, IoT, and cloud — stealth mode, ~2 months from launch.',
             'My goal isn\'t to graduate. It\'s to build things that last.',
           ].map((para, i) => (

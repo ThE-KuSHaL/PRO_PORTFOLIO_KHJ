@@ -1,8 +1,8 @@
 // components/hero/ProjectTicker.tsx
 export default function ProjectTicker() {
   const items = [
-    'FLOW', 'DHARMAJYOTI', 'VAHANA', 'Confidential B2B Venture',
-    'FLOW', 'DHARMAJYOTI', 'VAHANA', 'Confidential B2B Venture',
+    'FLOW', 'DHARMAJYOTI', 'KAVACH', 'Confidential B2B Venture',
+    'FLOW', 'DHARMAJYOTI', 'KAVACH', 'Confidential B2B Venture',
   ];
   return (
     <>

@@ -81,21 +81,101 @@ export default function EducationSection() {
         width: '100%',
         overflow: 'hidden',
         background: '#020617',
-        display: 'flex',
-        flexDirection: isMobile ? 'column' : 'row',
+        display: 'block', // Flow naturally over the full-width absolute background layer
       }}
     >
-      {/* ── LEFT COLUMN: Text and Box ── */}
-      {/* Takes 45% of width, holding content to not intersect with tree branches. */}
+
+      {/* ── BACKGROUND LAYER: Image & SVG Nodes (SPANNING FULL WIDTH) ── */}
       <div style={{
-        width: isMobile ? '100%' : '45%',
+        position: isMobile ? 'relative' : 'absolute',
+        inset: 0,
+        height: isMobile ? 320 : '100%',
+        zIndex: 5,
+        overflow: 'hidden',
+      }}>
+        <div style={{ 
+          position: 'absolute', 
+          inset: 0, 
+          opacity: 0.8, 
+          mixBlendMode: 'screen',
+          filter: activeNode ? 'blur(6px) brightness(0.5)' : 'none',
+          transition: 'filter 0.5s ease',
+        }}>
+           <Image src="/poetic-cyber-tree.png" alt="Cyber Tree" fill style={{ objectFit: 'contain', objectPosition: 'center right' }} priority />
+        </div>
+        <svg width="100%" height="100%" viewBox="0 0 1200 1000" preserveAspectRatio="xMaxYMid meet" style={{ position: 'absolute', inset: 0 }}>
+          <defs>
+            <filter id="fruitGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="8" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+          <DigitalBud cx={950} cy={500} delay={0.5} />
+          <DigitalBud cx={580} cy={400} delay={1.2} />
+          <DigitalBud cx={880} cy={435} delay={1} />
+          <DigitalBud cx={1150} cy={950} delay={0.1} />
+          <DigitalBud cx={700} cy={380} delay={1.8} />
+
+          {Object.values(TIMELINE_MAP).map((node, i) => {
+            const isActive = activeNode === node.id;
+            const isDimmed = activeNode !== null && !isActive;
+
+            return (
+              <g 
+                key={node.id} 
+                style={{ cursor: 'pointer', transition: 'all 0.5s ease', opacity: isDimmed ? 0.3 : 1, filter: isDimmed ? 'blur(4px)' : 'none' }} 
+                onClick={() => setActiveNode(prev => prev === node.id ? null : (node.id as NodeId))}
+              >
+                <circle cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize * 1.5} fill="transparent" />
+                <motion.circle 
+                  cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize + 8} 
+                  fill="none" stroke="#06b6d4" strokeWidth={1} strokeDasharray="4 4"
+                  animate={{ rotate: 360, opacity: [0.1, 0.4, 0.1] }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} 
+                />
+                <motion.circle 
+                  cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize / 2} 
+                  fill={isActive ? '#06b6d4' : '#6366f1'} 
+                  animate={{ 
+                    scale: isActive ? [1.2, 1.4, 1.2] : [1, 1.05, 1],
+                    boxShadow: isActive ? '0 0 40px #06b6d4' : '0 0 10px rgba(99,102,241,0.5)'
+                  }}
+                  transition={{ repeat: Infinity, duration: isActive ? 1.5 : 3 }}
+                  style={{ filter: isActive ? 'url(#fruitGlow)' : 'none' }}
+                />
+                <motion.circle 
+                  cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize} 
+                  fill="none" stroke={isActive ? '#06b6d4' : 'rgba(255,255,255,0.2)'} 
+                  strokeWidth={2}
+                  animate={isActive ? { scale: [1, 1.2, 1], opacity: [0.8, 0.2, 0.8] } : {}}
+                  transition={{ repeat: Infinity, duration: 2.5 }}
+                />
+                <text 
+                  x={node.pos.cx} y={node.pos.cy + node.fruitSize + 25} 
+                  fill="#fff" textAnchor="middle" 
+                  fontSize={node.id === 'be' ? 22 : 16} 
+                  fontWeight={isActive ? 800 : 400}
+                  style={{ pointerEvents: 'none', filter: 'drop-shadow(0 2px 6px rgba(0,0,0,1))' }}
+                >
+                  {node.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* ── CONTENT LAYER ── */}
+      <div style={{
+        width: '100%',
         display: 'flex',
         flexDirection: 'column',
-        padding: isMobile ? '2rem 1.5rem 0.5rem' : '10vh 0 5vh clamp(2rem, 6vw, 6rem)',
+        // Crucial padding fix: Adds 200px safely clearing the sidebar on Desktop
+        padding: isMobile ? '2rem 1.5rem 0.5rem' : '10vh 0 5vh calc(200px + clamp(1.5rem, 4vw, 4rem))',
         position: 'relative',
         zIndex: 20,
+        pointerEvents: 'none', // Lets clicks pass through to tree where empty
       }}>
-        <div style={{ marginBottom: isMobile ? '1rem' : '2.5rem' }}>
+        <div style={{ marginBottom: isMobile ? '1rem' : '2.5rem', pointerEvents: 'auto' }}>
           <SectionLabel color="#6366f1">Education</SectionLabel>
           <h2 style={{ fontSize: 'clamp(2rem,4vw,3.5rem)', fontWeight: 700, marginBottom: '0.25rem', color: '#f0f4ff', textShadow: '0 4px 20px rgba(0,0,0,0.8)' }}>
             The roots.
@@ -127,7 +207,8 @@ export default function EducationSection() {
                 boxShadow: '0 20px 50px rgba(0,0,0,0.8), inset 0 0 30px rgba(6,182,212,0.03)',
                 overflowY: isMobile ? 'auto' : undefined,
                 maxHeight: isMobile ? '60vh' : undefined,
-                marginBottom: isMobile ? '2rem' : 0,
+                marginBottom: isMobile ? '2rem' : '10vh',
+                pointerEvents: 'auto', // Restore clicking on panel
                 zIndex: 30, // Stay above the blurred background
               }}
             >
@@ -208,106 +289,6 @@ export default function EducationSection() {
           )}
         </AnimatePresence>
       </div>
-
-      {/* ── RIGHT COLUMN: Image & SVG Nodes ── */}
-      {/* 55% width absolute container to bound the SVG coordinates safely over the image. */}
-      <div style={{
-        width: isMobile ? '100%' : '55%',
-        minHeight: isMobile ? 320 : 'auto',
-        position: isMobile ? 'relative' : 'absolute',
-        right: 0,
-        top: 0,
-        bottom: 0,
-        zIndex: 5,
-        overflow: 'hidden',
-      }}>
-        {/* Render poetic-cyber-tree.png perfectly bounding to the right column container */}
-        <div style={{ 
-          position: 'absolute', 
-          inset: 0, 
-          opacity: 0.8, 
-          mixBlendMode: 'screen',
-          filter: activeNode ? 'blur(6px) brightness(0.5)' : 'none',
-          transition: 'filter 0.5s ease',
-        }}>
-           <Image src="/poetic-cyber-tree.png" alt="Cyber Tree" fill style={{ objectFit: 'contain', objectPosition: 'center right' }} priority />
-        </div>
-
-        {/* Tree Animation "Fruits" — layered perfectly over the image */}
-        <svg width="100%" height="100%" viewBox="0 0 1200 1000" preserveAspectRatio="xMaxYMid meet" style={{ position: 'absolute', inset: 0 }}>
-          {/* Definitions for Glow Filters */}
-          <defs>
-            <filter id="fruitGlow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="8" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-
-          {/* Decorative Junction Nodes (PCB Junctions) */}
-          <DigitalBud cx={950} cy={500} delay={0.5} />
-          <DigitalBud cx={580} cy={400} delay={1.2} />
-          <DigitalBud cx={880} cy={435} delay={1} />
-          <DigitalBud cx={1150} cy={950} delay={0.1} />
-          <DigitalBud cx={700} cy={380} delay={1.8} />
-
-          {/* Render The 3 Main Interactive Fruits */}
-          {Object.values(TIMELINE_MAP).map((node, i) => {
-            const isActive = activeNode === node.id;
-            const isDimmed = activeNode !== null && !isActive;
-
-            return (
-              <g 
-                key={node.id} 
-                style={{ cursor: 'pointer', transition: 'all 0.5s ease', opacity: isDimmed ? 0.3 : 1, filter: isDimmed ? 'blur(4px)' : 'none' }} 
-                onClick={() => setActiveNode(prev => prev === node.id ? null : (node.id as NodeId))}
-              >
-                {/* Hitbox */}
-                <circle cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize * 1.5} fill="transparent" />
-                
-                {/* Outer Glow Circles */}
-                <motion.circle 
-                  cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize + 8} 
-                  fill="none" stroke="#06b6d4" strokeWidth={1} strokeDasharray="4 4"
-                  animate={{ rotate: 360, opacity: [0.1, 0.4, 0.1] }} transition={{ duration: 10, repeat: Infinity, ease: "linear" }} 
-                />
-                
-                {/* Pulsing Core */}
-                <motion.circle 
-                  cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize / 2} 
-                  fill={isActive ? '#06b6d4' : '#6366f1'} 
-                  animate={{ 
-                    scale: isActive ? [1.2, 1.4, 1.2] : [1, 1.05, 1],
-                    boxShadow: isActive ? '0 0 40px #06b6d4' : '0 0 10px rgba(99,102,241,0.5)'
-                  }}
-                  transition={{ repeat: Infinity, duration: isActive ? 1.5 : 3 }}
-                  style={{ filter: isActive ? 'url(#fruitGlow)' : 'none' }}
-                />
-
-                {/* Growth Ring */}
-                <motion.circle 
-                  cx={node.pos.cx} cy={node.pos.cy} r={node.fruitSize} 
-                  fill="none" stroke={isActive ? '#06b6d4' : 'rgba(255,255,255,0.2)'} 
-                  strokeWidth={2}
-                  animate={isActive ? { scale: [1, 1.2, 1], opacity: [0.8, 0.2, 0.8] } : {}}
-                  transition={{ repeat: Infinity, duration: 2.5 }}
-                />
-
-                {/* Label text */}
-                <text 
-                  x={node.pos.cx} y={node.pos.cy + node.fruitSize + 25} 
-                  fill="#fff" textAnchor="middle" 
-                  fontSize={node.id === 'be' ? 22 : 16} 
-                  fontWeight={isActive ? 800 : 400}
-                  style={{ pointerEvents: 'none', filter: 'drop-shadow(0 2px 6px rgba(0,0,0,1))' }}
-                >
-                  {node.label}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
     </section>
   );
 }

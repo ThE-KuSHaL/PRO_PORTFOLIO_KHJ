@@ -57,6 +57,7 @@ body {
   color: #f0f4ff;
   font-family: var(--font-space-grotesk), 'Space Grotesk', system-ui, sans-serif;
   overflow-x: hidden;
+  cursor: none;
 }
 
 /* ── SCROLLBAR ── */

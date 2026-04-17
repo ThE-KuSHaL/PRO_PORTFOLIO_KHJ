@@ -18,10 +18,6 @@ const PCBBackground = dynamic(
   () => import('@/components/background/PCBBackground'),
   { ssr: false }
 );
-const CustomCursor = dynamic(
-  () => import('@/components/layout/CustomCursor'),
-  { ssr: false }
-);
 const ClickSpark = dynamic(
   () => import('@/components/ui/ClickSpark'),
   { ssr: false }
@@ -40,8 +36,6 @@ export default function Home() {
       {/* Fixed background */}
       <PCBBackground />
 
-      {/* Custom cursor */}
-      <CustomCursor />
 
       {/* Click spark effect — fires on every click site-wide */}
       <ClickSpark sparkColor="#06b6d4" sparkCount={10} sparkSize={14} duration={500} />

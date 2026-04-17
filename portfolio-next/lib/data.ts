@@ -63,14 +63,14 @@ export const projects: Project[] = [
     modal: { demo: null, github: null }, // TODO: add links
   },
   {
-    id: 'vahana',
-    name: 'VAHANA',
-    subtitle: 'IoT AQI Monitor · IIT Bombay TechFest Winner',
+    id: 'kavach',
+    name: 'KAVACH',
+    subtitle: 'AI-Based Fraud Detection System',
     description:
-      'A distributed air quality index monitoring system using sensor networks and real-time IoT pipelines. Winner of the IoT Track at IIT Bombay TechFest. Aggregates PM2.5, CO2, and volatile compound data across nodes into a unified dashboard.',
-    tags: ['IoT', 'Sensors', 'Python', 'Real-time', 'Dashboard'],
-    status: 'winner',
-    emoji: '🏆',
+      'An intelligent system built to detect and flag fraudulent transactions in real-time. Leverages machine learning models to analyze transaction patterns, reducing false positives while identifying anomalous behavior accurately.',
+    tags: ['AI', 'Fraud Detection', 'Python', 'Machine Learning', 'Real-time'],
+    status: 'active',
+    emoji: '🛡️',
     modal: { demo: null, github: null }, // TODO: add links
   },
   {
@@ -113,15 +113,17 @@ export const journeyMilestones: JourneyMilestone[] = [
     x: 400, y: 380, side: 'left',
   },
   {
+    id: 'kavach-milestone',
     year: '2024',
-    title: 'IoT Deep Dive',
-    summary: 'VAHANA built · Gas AQI real-time system',
+    title: 'AI Security',
+    summary: 'KAVACH built · AI fraud detection system',
     x: 220, y: 490, side: 'right',
   },
   {
+    id: 'deepening-knowledge',
     year: '2024',
-    title: 'Recognition',
-    summary: 'Winner, IIT Bombay TechFest · IoT Track',
+    title: 'System Architecture',
+    summary: 'Scaling AI pipelines and robust security models',
     x: 220, y: 590, side: 'left',
   },
   {
@@ -240,7 +242,7 @@ export const semesterData: SemesterData[] = [
     period: 'Jul 2025 – Present',
     courses: ['DSA', 'Operating Systems', 'DBMS', 'Software Engineering'],
     projects: [
-      'VAHANA built — IIT Bombay TechFest Winner',
+      'KAVACH built — AI-based fraud detection system',
       'FLOW designed and moving to commercialization',
       'B2B venture funded',
     ],

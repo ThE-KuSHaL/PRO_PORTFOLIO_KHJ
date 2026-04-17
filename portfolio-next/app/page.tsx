@@ -13,11 +13,16 @@ import ScrollIndicator from '@/components/ui/ScrollIndicator';
 import ScrollToTop from '@/components/ui/ScrollToTop';
 import ScrollNav from '@/components/ui/ScrollNav';
 
-// Client-only components
 const PCBBackground = dynamic(
   () => import('@/components/background/PCBBackground'),
   { ssr: false }
 );
+
+const CustomCursor = dynamic(
+  () => import('@/components/layout/CustomCursor'),
+  { ssr: false }
+);
+
 const ClickSpark = dynamic(
   () => import('@/components/ui/ClickSpark'),
   { ssr: false }
@@ -34,6 +39,7 @@ export default function Home() {
       <ScrollToTop />
 
       {/* Fixed background */}
+      <CustomCursor />
       <PCBBackground />
 
 

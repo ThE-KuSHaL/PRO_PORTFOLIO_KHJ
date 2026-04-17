@@ -11,6 +11,7 @@ export interface Project {
 }
 
 export interface JourneyMilestone {
+  id?: string;
   year: string;
   title: string;
   summary: string;

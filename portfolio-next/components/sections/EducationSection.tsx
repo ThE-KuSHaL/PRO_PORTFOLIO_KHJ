@@ -100,12 +100,10 @@ export default function EducationSection() {
           mixBlendMode: 'screen',
           filter: activeNode ? 'blur(6px) brightness(0.5)' : 'none',
           transition: 'filter 0.5s ease',
-          maskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 100%)',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 15%, black 100%)',
         }}>
-           <Image src="/poetic-cyber-tree.png" alt="Cyber Tree" fill style={{ objectFit: 'contain', objectPosition: 'center right' }} priority />
+           <Image src="/poetic-cyber-tree.png" alt="Cyber Tree" fill style={{ objectFit: 'cover', objectPosition: 'center right' }} priority />
         </div>
-        <svg width="100%" height="100%" viewBox="0 0 1200 1000" preserveAspectRatio="xMaxYMid meet" style={{ position: 'absolute', inset: 0 }}>
+        <svg width="100%" height="100%" viewBox="0 0 1200 1000" preserveAspectRatio="xMaxYMid slice" style={{ position: 'absolute', inset: 0 }}>
           <defs>
             <filter id="fruitGlow" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="8" result="blur" />

@@ -31,43 +31,7 @@ type NodeId = keyof typeof TIMELINE_MAP;
 
 // --- Components ---
 
-const AnimatedPath = ({ 
-  d, 
-  duration = 6, 
-  delay = 0, 
-  strokeWidth = 2, 
-  color = "#06b6d4" 
-}: { 
-  d: string, 
-  duration?: number, 
-  delay?: number, 
-  strokeWidth?: number,
-  color?: string
-}) => (
-  <>
-    {/* Static Dim Base Path */}
-    <motion.path 
-      d={d} fill="none" stroke={color} strokeWidth={strokeWidth} strokeOpacity={0.08}
-      initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ margin: '100px' }}
-      transition={{ duration: 3, ease: "easeOut", delay: delay * 0.2 }} 
-    />
-    {/* Animated Glowing Pulse */}
-    <motion.path 
-      d={d} fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round"
-      initial={{ pathLength: 0.2, pathOffset: -0.2, opacity: 0 }}
-      whileInView={{ pathOffset: [0, 1], opacity: [0, 1, 1, 0] }}
-      viewport={{ margin: '100px' }}
-      transition={{ 
-        duration, 
-        delay, 
-        repeat: Infinity, 
-        ease: "easeInOut",
-        repeatDelay: Math.random() * 2 
-      }}
-      style={{ filter: `drop-shadow(0 0 ${strokeWidth * 2}px ${color})` }} 
-    />
-  </>
-);
+import Image from 'next/image';
 
 const DigitalBud = ({ cx, cy, delay = 0 }: { cx: number, cy: number, delay?: number }) => (
   <motion.g 
@@ -103,39 +67,7 @@ export default function EducationSection() {
 
   const activeData = TIMELINE_MAP[activeNode];
 
-  // Memoized path data for performance and density
-  const treePaths = useMemo(() => ([
-    // --- MAIN TRUNK ---
-    { d: "M 1150 950 C 1100 800, 1050 650, 950 500", w: 12, dur: 5, del: 0 },
-    { d: "M 1160 960 Q 1120 750, 960 510", w: 4, dur: 4.5, del: 0.2 },
-    
-    // --- ROOTS ---
-    { d: "M 1150 950 Q 1180 1000, 1250 1050", w: 6, dur: 3, del: 0, c: "#6366f1" },
-    { d: "M 1150 950 Q 1100 980, 1000 1050", w: 4, dur: 3.5, del: 0.1, c: "#6366f1" },
-    { d: "M 1120 900 Q 1050 920, 900 1000", w: 2, dur: 4, del: 0.3, c: "#6366f1" },
-    
-    // --- BRANCH: 10th (Shortest / Closest) ---
-    { d: "M 950 500 C 920 520, 890 480, 880 520", w: 4, dur: 3, del: 1 },
-    { d: "M 950 505 Q 900 550, 880 520", w: 1, dur: 2.5, del: 1.2 },
-    
-    // --- BRANCH: MAIN CANOPY (To PUC & BE) ---
-    { d: "M 950 500 C 850 400, 750 450, 580 400", w: 8, dur: 5, del: 1 },
-    { d: "M 880 435 Q 800 350, 700 380", w: 2, dur: 4, del: 1.5 },
-    { d: "M 700 380 Q 650 350, 580 400", w: 2, dur: 3.5, del: 2 },
-    
-    // --- BRANCH: THE REACH (To BE) ---
-    { d: "M 580 400 C 450 300, 350 250, 220 300", w: 6, dur: 5, del: 2.5 },
-    { d: "M 480 340 Q 400 280, 220 300", w: 1.5, dur: 4, del: 3 },
-    
-    // --- TERTIARY FILLER / CIRCUITRY TENDRILLS ---
-    { d: "M 980 650 Q 920 700, 850 680", w: 1, dur: 3, del: 0.5 },
-    { d: "M 850 680 Q 800 650, 750 670", w: 1, dur: 4, del: 1.5 },
-    { d: "M 750 200 Q 800 150, 900 180", w: 1.5, dur: 5, del: 2 },
-    { d: "M 520 365 Q 450 420, 350 400", w: 1, dur: 3.8, del: 2.2 },
-    { d: "M 350 150 Q 250 100, 100 120", w: 1, dur: 4.5, del: 3.5 },
-    { d: "M 180 320 Q 100 250, 20 280", w: 1.5, dur: 3, del: 4 },
-    { d: "M 600 450 Q 650 500, 720 480", w: 0.8, dur: 3.2, del: 1.8 },
-  ]), []);
+  // SVG replaced with static poetic-cyber-tree.png
 
   return (
     <section id="education" ref={ref} aria-label="Education"
@@ -175,7 +107,12 @@ export default function EducationSection() {
         zIndex: 0,
         overflow: 'hidden',
       }}>
-        <svg width="100%" height="100%" viewBox="0 0 1200 1000" preserveAspectRatio="xMidYMid slice">
+        {/* Render poetic-cyber-tree.png properly placed on the right */}
+        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '60%', opacity: 0.8 }}>
+           <Image src="/poetic-cyber-tree.png" alt="Cyber Tree" fill style={{ objectFit: 'contain', objectPosition: 'right' }} priority />
+        </div>
+
+        <svg width="100%" height="100%" viewBox="0 0 1200 1000" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0 }}>
           {/* Definitions for Glow Filters */}
           <defs>
             <filter id="fruitGlow" x="-50%" y="-50%" width="200%" height="200%">
@@ -183,11 +120,6 @@ export default function EducationSection() {
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
           </defs>
-
-          {/* Render All Background Paths */}
-          {treePaths.map((p, i) => (
-            <AnimatedPath key={i} d={p.d} strokeWidth={p.w} duration={p.dur} delay={p.del} color={p.c} />
-          ))}
 
           {/* Decorative Junction Nodes (PCB Junctions) */}
           <DigitalBud cx={950} cy={500} delay={0.5} />

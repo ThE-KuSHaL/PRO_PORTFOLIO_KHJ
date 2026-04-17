@@ -56,7 +56,6 @@ body {
   background-color: #030810;
   color: #f0f4ff;
   font-family: var(--font-space-grotesk), 'Space Grotesk', system-ui, sans-serif;
-  cursor: none;
   overflow-x: hidden;
 }
 

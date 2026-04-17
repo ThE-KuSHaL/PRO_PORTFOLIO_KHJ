@@ -8,10 +8,7 @@ import ProjectTicker from './ProjectTicker';
 import PhotoPlaceholder from './PhotoPlaceholder';
 import KHJEmblem from './KHJEmblem';
 
-const PrinterArm = dynamic(() => import('./PrinterArm'), { ssr: false });
-
 export default function HeroSection() {
-  const [emblemVisible, setEmblemVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const emblemRef = useRef<HTMLDivElement>(null);
 
@@ -80,7 +77,7 @@ export default function HeroSection() {
             transformOrigin: 'left center',
           }}
         >
-          <KHJEmblem visible={emblemVisible} size={220} />
+          <KHJEmblem visible={true} size={220} />
         </div>
 
         <GlitchName />
@@ -94,7 +91,7 @@ export default function HeroSection() {
           {[
             { label: '📍 VVCE, Mysuru', color: 'rgba(255,255,255,0.35)' },
             { label: '⚡ QUIRK TECHNOLOGIES', color: 'rgba(6,182,212,0.7)' },
-            { label: '🏆 IIT Bombay TechFest Winner', color: 'rgba(99,102,241,0.8)' },
+            { label: '🛡️ Kavach — AI Fraud Detection', color: 'rgba(99,102,241,0.8)' },
           ].map(chip => (
             <span key={chip.label} style={{
               fontSize: isMobile ? '0.65rem' : '0.7rem',
@@ -150,9 +147,6 @@ export default function HeroSection() {
 
         <ProjectTicker />
       </div>
-
-      {/* Printer arm — uses emblemRef for positioning */}
-      <PrinterArm onComplete={() => setEmblemVisible(true)} emblemRef={emblemRef} />
     </section>
   );
 }

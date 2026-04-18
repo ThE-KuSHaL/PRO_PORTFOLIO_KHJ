@@ -25,7 +25,7 @@ export const TIMELINE_MAP = {
     id: 'puc',
     year: '2021–2023',
     label: '11th & 12th Grade (PUC)',
-    sub: 'Sri Bhagawan Mahaveer Jain College (SBMJC), VVPURAM',
+    sub: 'Sri Jayachamarajendra PU College (SVM), Mysuru',
     note: 'The spark of structured thinking. PCMC (Physics, Chem, Math, CS).',
     isBE: false,
     pos: { cx: 580, cy: 400 },

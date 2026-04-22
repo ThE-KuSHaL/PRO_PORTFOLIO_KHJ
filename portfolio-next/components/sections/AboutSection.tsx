@@ -63,28 +63,26 @@ export default function AboutSection() {
           {/* PFP Avatar */}
           <div
             style={{
-              width: 120, height: 120,
-              borderRadius: '50%',
-              border: '1.5px solid rgba(6,182,212,0.4)',
-              background: 'rgba(6,182,212,0.05)',
               position: 'relative',
+              display: 'inline-block',
               marginBottom: '1.5rem',
             }}
           >
-            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', overflow: 'hidden' }}>
-              <Image 
-                src="/pfp_PORT.png" 
-                alt="Kushal H J" 
-                fill 
-                style={{ objectFit: 'cover', objectPosition: 'center top' }} 
+            {/* Circular photo container — overflow:hidden clips the image cleanly */}
+            <div style={{ width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.05)', position: 'relative' }}>
+              <Image
+                src="/pfp_PORT.png"
+                alt="Kushal H J"
+                fill
+                style={{ objectFit: 'cover', objectPosition: 'center top' }}
               />
             </div>
-            {/* Outer ring */}
+            {/* Outer ring — sibling, not child, so it renders correctly outside clip on all browsers */}
             <div
               aria-hidden="true"
               style={{
                 position: 'absolute',
-                inset: -6,
+                inset: -8,
                 borderRadius: '50%',
                 border: '1px solid rgba(99,102,241,0.3)',
                 pointerEvents: 'none',

@@ -88,21 +88,23 @@ export default function CustomCursor() {
     const onHoverIn  = () => { isHover = true; };
     const onHoverOut = () => { isHover = false; };
 
+    // Use delegation — works for all dynamically mounted elements too
+    const onOver = (e: MouseEvent) => {
+      const t = e.target as Element;
+      if (t.closest('a, button, [data-cursor]')) onHoverIn();
+    };
+    const onOut = (e: MouseEvent) => {
+      const t = e.target as Element;
+      if (t.closest('a, button, [data-cursor]')) onHoverOut();
+    };
+
     window.addEventListener('mousemove',   onMove,  { passive: true });
     document.addEventListener('mouseenter', onEnter);
     document.addEventListener('mouseleave', onLeave);
     document.addEventListener('mousedown',  onDown);
     document.addEventListener('mouseup',    onUp);
-
-    // Use delegation instead of per-element listeners — much cheaper
-    document.addEventListener('mouseover', (e) => {
-      const t = e.target as Element;
-      if (t.closest('a, button, [data-cursor]')) onHoverIn();
-    });
-    document.addEventListener('mouseout', (e) => {
-      const t = e.target as Element;
-      if (t.closest('a, button, [data-cursor]')) onHoverOut();
-    });
+    document.addEventListener('mouseover',  onOver);
+    document.addEventListener('mouseout',   onOut);
 
     return () => {
       if (raf) cancelAnimationFrame(raf);
@@ -111,6 +113,8 @@ export default function CustomCursor() {
       document.removeEventListener('mouseleave', onLeave);
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('mouseover', onOver);
+      document.removeEventListener('mouseout', onOut);
     };
   }, []);
 

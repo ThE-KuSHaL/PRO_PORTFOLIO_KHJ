@@ -14,6 +14,18 @@ const CARDS = [
 
 export default function LatchCards({ onClose }: LatchCardsProps) {
   function scrollTo(target: string) {
+    if (target === '#about') {
+      // Issue 3 fix: show About heading peeking in from the bottom (teaser effect)
+      const el = document.querySelector('#about') as HTMLElement;
+      if (el) {
+        window.scrollTo({
+          top: el.offsetTop - window.innerHeight * 0.65,
+          behavior: 'smooth',
+        });
+      }
+      onClose();
+      return;
+    }
     const el = document.querySelector(target);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
     onClose();

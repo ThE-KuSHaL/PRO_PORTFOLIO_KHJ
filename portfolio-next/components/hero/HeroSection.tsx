@@ -8,8 +8,12 @@ import ProjectTicker from './ProjectTicker';
 import PhotoPlaceholder from './PhotoPlaceholder';
 import KHJEmblem from './KHJEmblem';
 
+const PrinterArm = dynamic(() => import('./PrinterArm'), { ssr: false });
+
 export default function HeroSection() {
   const [isMobile, setIsMobile] = useState(false);
+  const [emblemVisible, setEmblemVisible] = useState(false);
+  const [armDone, setArmDone] = useState(false);
   const emblemRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,20 +69,35 @@ export default function HeroSection() {
           paddingLeft: isMobile ? '1.5rem' : 'calc(200px + clamp(1.5rem, 3vw, 3rem))',
         }}
       >
-        {/* KHJ Emblem */}
+        {/* KHJ Emblem — wrapper always has explicit dimensions so getBoundingClientRect works even at opacity:0 */}
         <div
           ref={emblemRef}
           style={{
             position: 'relative',
             display: 'inline-flex',
             marginBottom: '1.5rem',
-            // Scale down emblem on mobile
             transform: isMobile ? 'scale(0.75)' : 'scale(1)',
             transformOrigin: 'left center',
+            // Explicit size so the arm can read real coordinates before the emblem is visible
+            width: 220,
+            height: 220,
+            opacity: emblemVisible ? 1 : 0,
+            transition: 'opacity 0.6s ease',
           }}
         >
-          <KHJEmblem visible={true} size={220} />
+          <KHJEmblem visible={emblemVisible} size={220} />
         </div>
+
+        {/* Printer arm — renders once on mount, calls onComplete to show emblem */}
+        {!armDone && (
+          <PrinterArm
+            emblemRef={emblemRef}
+            onComplete={() => {
+              setEmblemVisible(true);
+              setArmDone(true);
+            }}
+          />
+        )}
 
         <GlitchName />
 

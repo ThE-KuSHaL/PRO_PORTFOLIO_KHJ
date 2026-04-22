@@ -13,6 +13,7 @@ const r4 = (n: number) => Math.round(n * 10000) / 10000;
 
 export default function KHJEmblem({ visible, size = 220 }: KHJEmblemProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [openKey, setOpenKey] = useState(0); // increments on each open so AnimatePresence sees a fresh mount
   const [showHint, setShowHint] = useState(true);
   const [isPressed, setIsPressed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -87,7 +88,10 @@ export default function KHJEmblem({ visible, size = 220 }: KHJEmblemProps) {
     e.stopPropagation();
     if (isPressed) {
       if (showHint) setShowHint(false);
-      setIsOpen(prev => !prev);
+      setIsOpen(prev => {
+        if (!prev) setOpenKey(k => k + 1); // new key every time we open
+        return !prev;
+      });
     }
     setIsPressed(false);
   }
@@ -234,7 +238,7 @@ export default function KHJEmblem({ visible, size = 220 }: KHJEmblemProps) {
       {/* Latch cards - rendering over top natively, unskewed */}
       <AnimatePresence>
         {isOpen && (
-          <LatchCards onClose={() => setIsOpen(false)} />
+          <LatchCards key={openKey} onClose={() => setIsOpen(false)} />
         )}
       </AnimatePresence>
     </div>

@@ -146,10 +146,12 @@ function SinglePin({ pin, isOpen, onToggle }: { pin: PinConfig; isOpen: boolean;
             onClick={e => e.stopPropagation()}
             style={{
               position: 'absolute',
-              bottom: '100%',
+              // Issue 7 fix: pins near map top (pctY < 0.3) open card below; others open above
+              ...(pin.pctY < 0.3
+                ? { top: 'calc(100% + 14px)' }
+                : { bottom: 'calc(100% + 14px)' }),
               left: '50%',
               transform: 'translateX(-50%)',
-              marginBottom: 14,
               width: 200,
               padding: '0.9rem 1.1rem',
               borderRadius: 10,
@@ -181,12 +183,15 @@ function SinglePin({ pin, isOpen, onToggle }: { pin: PinConfig; isOpen: boolean;
               {copied ? 'Copied ✓' : pin.btnLabel}
             </button>
 
-            {/* Arrow pointer */}
+            {/* Arrow pointer — flips direction to match card placement */}
             <div style={{
-              position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%)',
+              position: 'absolute',
+              ...(pin.pctY < 0.3
+                ? { top: -7, borderBottom: `7px solid ${pin.accent}80`, borderTop: 'none' }
+                : { bottom: -7, borderTop: `7px solid ${pin.accent}80`, borderBottom: 'none' }),
+              left: '50%', transform: 'translateX(-50%)',
               width: 0, height: 0,
               borderLeft: '7px solid transparent', borderRight: '7px solid transparent',
-              borderTop: `7px solid ${pin.accent}80`,
             }} />
           </motion.div>
         )}

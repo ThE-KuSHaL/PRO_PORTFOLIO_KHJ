@@ -36,7 +36,7 @@ export default function PhotoPlaceholder() {
             objectFit: 'cover',
             objectPosition: 'left bottom',
             transform: 'scaleX(-1) translateX(-8%)',
-            filter: 'brightness(1.15) contrast(1.05) drop-shadow(0 0 40px rgba(6,182,212,0.2))'
+            filter: 'brightness(1.02) contrast(1.02) saturate(0.93) drop-shadow(0 4px 20px rgba(0,0,0,0.4))'
           }}
           onError={() => setImgError(true)}
           priority
@@ -51,34 +51,56 @@ export default function PhotoPlaceholder() {
         </div>
       )}
 
-      {/* LightRays — prominent volumetric beams, fades as user scrolls away */}
+      {/* LightRays — restrained ambient atmospheric lighting */}
       <LightRays
-        rayCount={12}
+        rayCount={8}
         color="rgba(6,182,212,"
         colorAlt="rgba(99,102,241,"
-        maxOpacity={0.45}
-        speed={0.8}
-        blur={24}
+        maxOpacity={0.25}
+        speed={0.5}
+        blur={32}
         fadeOnScroll={true}
         style={{ zIndex: 2 }}
       />
 
-      {/* Left margin fade — blends into left column */}
+      {/* ── Edge dissolve — minimal feathering, background stays visible ── */}
+
+      {/* Left edge — light blend into content column */}
       <div
         aria-hidden="true"
         style={{
           position: 'absolute', inset: 0, zIndex: 3,
-          background: 'linear-gradient(to right, rgba(3,8,16,1) 0%, rgba(3,8,16,0) 28%)',
+          background: 'linear-gradient(to right, rgba(3,8,16,0.3) 0%, rgba(3,8,16,0.08) 12%, transparent 25%)',
           pointerEvents: 'none',
         }}
       />
 
-      {/* Bottom vignette — so photo doesn't feel cut-off */}
+      {/* Right edge — barely-there feather */}
       <div
         aria-hidden="true"
         style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: '30%', zIndex: 3,
-          background: 'linear-gradient(to top, rgba(3,8,16,0.6) 0%, transparent 100%)',
+          position: 'absolute', inset: 0, zIndex: 3,
+          background: 'linear-gradient(to left, rgba(3,8,16,0.15) 0%, transparent 10%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Top edge — whisper feather */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '18%', zIndex: 3,
+          background: 'linear-gradient(to bottom, rgba(3,8,16,0.2) 0%, transparent 100%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Bottom edge — light ground blend */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: '20%', zIndex: 3,
+          background: 'linear-gradient(to top, rgba(3,8,16,0.25) 0%, transparent 100%)',
           pointerEvents: 'none',
         }}
       />

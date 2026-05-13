@@ -16,7 +16,7 @@ const FRAME_DIR =
 const FRAME_PREFIX = 'Create_a_seamless_infinite_loop_202605122232_';
 const TOTAL_FRAMES = 150;
 const TARGET_FPS = 22;        // Render tick rate (GPU budget — unchanged)
-const CYCLE_DURATION = 55;    // Seconds for one full forward+reverse breath (~60% slower)
+const CYCLE_DURATION = 70;    // Seconds for one full forward+reverse breath (nearly subconscious)
 const EASE_BLEND = 0.15;      // Cosine blend factor (0 = pure linear, 1 = full cosine)
 const SCALE_FACTOR = 1.08;    // Slight upscale to crop watermark edges
 
@@ -123,7 +123,8 @@ export default function PCBBackground() {
       drawW *= SCALE_FACTOR;
       drawH *= SCALE_FACTOR;
 
-      const dx = (cw - drawW) / 2;
+      // Shift convergence ~8% left so brightest traces avoid the portrait region
+      const dx = (cw - drawW) / 2 - cw * 0.04;
       const dy = (ch - drawH) / 2;
 
       // Draw primary frame
@@ -247,18 +248,49 @@ export default function PCBBackground() {
   }, [drawFrame, handleResize, renderCurrentState]);
 
   return (
-    <canvas
-      ref={canvasRef}
+    <div
       aria-hidden="true"
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: -1,
         pointerEvents: 'none',
-        width: '100vw',
-        height: '100vh',
-        display: 'block',
+        overflow: 'hidden',
       }}
-    />
+    >
+      {/* Animated frame canvas — dimmed and softened */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          filter: 'brightness(0.62) blur(1.2px)',
+        }}
+      />
+
+      {/* Dark cinematic overlay — unifies composition, improves text readability */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(3, 8, 16, 0.35)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Radial vignette — cinematic depth falloff */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'radial-gradient(ellipse 70% 60% at 40% 45%, transparent 0%, rgba(3,8,16,0.5) 65%, rgba(3,8,16,0.82) 100%)',
+          pointerEvents: 'none',
+        }}
+      />
+    </div>
   );
 }

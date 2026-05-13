@@ -10,7 +10,7 @@ const FRAME_DIR =
   '/inf_loop/Create_a_seamless_infinite_loop_202605122232_frames';
 const FRAME_PREFIX = 'Create_a_seamless_infinite_loop_202605122232_';
 const TOTAL_FRAMES = 150;
-const TARGET_FPS = 30; // smooth playback without burning CPU
+const TARGET_FPS = 22; // smooth, calm playback (approx 0.75x speed) without burning CPU
 const SCALE_FACTOR = 1.08; // slight upscale to crop watermark edges
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

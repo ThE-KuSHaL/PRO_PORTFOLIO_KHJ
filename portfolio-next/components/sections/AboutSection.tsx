@@ -59,6 +59,7 @@ export default function AboutSection() {
           initial={{ opacity: 0, x: -24 }}
           animate={isInView ? { opacity: 1, x: 0 } : {}}
           transition={{ duration: 0.6 }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
         >
           {/* PFP Avatar */}
           <div
@@ -69,7 +70,7 @@ export default function AboutSection() {
             }}
           >
             {/* Circular photo container — overflow:hidden clips the image cleanly */}
-            <div style={{ width: 120, height: 120, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.05)', position: 'relative' }}>
+            <div style={{ width: 250, height: 250, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.05)', position: 'relative' }}>
               <Image
                 src="/pfp_PORT.png"
                 alt="Kushal H J"
@@ -82,7 +83,7 @@ export default function AboutSection() {
               aria-hidden="true"
               style={{
                 position: 'absolute',
-                inset: -8,
+                inset: -14,
                 borderRadius: '50%',
                 border: '1px solid rgba(99,102,241,0.3)',
                 pointerEvents: 'none',
@@ -91,7 +92,7 @@ export default function AboutSection() {
           </div>
 
           {/* Stat chips */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
             {CHIPS.map((chip, i) => (
               <motion.span
                 key={chip}
@@ -99,9 +100,9 @@ export default function AboutSection() {
                 animate={isInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ delay: 0.1 + i * 0.08, duration: 0.4 }}
                 style={{
-                  fontSize: '0.68rem',
+                  fontSize: '0.78rem',
                   fontWeight: 600,
-                  padding: '5px 12px',
+                  padding: '7px 16px',
                   borderRadius: 999,
                   border: '1px solid rgba(6,182,212,0.22)',
                   background: 'rgba(6,182,212,0.06)',

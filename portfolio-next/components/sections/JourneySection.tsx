@@ -12,7 +12,8 @@ export default function JourneySection() {
       id="journey"
       aria-label="Journey"
       style={{
-        paddingLeft: 'calc(200px + clamp(1.5rem,4vw,4rem))',
+        paddingLeft: 'calc(var(--sidebar-width, 200px) + clamp(1.5rem,4vw,4rem))',
+        transition: 'padding-left 0.3s cubic-bezier(0.4,0,0.2,1)',
         paddingTop: 'clamp(5rem,8vh,7rem)',
         paddingBottom: 'clamp(5rem,8vh,7rem)',
         paddingRight: 'clamp(1.5rem,4vw,4rem)',

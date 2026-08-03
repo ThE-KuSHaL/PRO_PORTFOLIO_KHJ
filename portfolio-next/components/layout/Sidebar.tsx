@@ -1,6 +1,7 @@
 'use client';
 // components/layout/Sidebar.tsx
 import { useEffect, useRef, useState } from 'react';
+import { useLayoutStore } from '@/store/layoutStore';
 import { navLinks } from '@/lib/data';
 import {
   Home, User, GraduationCap, Cpu, FolderOpen,
@@ -10,10 +11,8 @@ import {
 const ICONS = [Home, User, GraduationCap, Cpu, FolderOpen, Rocket, GitBranch, Mail];
 
 export default function Sidebar() {
-  const [active, setActive] = useState('hero');
-  const [collapsed, setCollapsed] = useState(false);
+  const { activeSection, setActiveSection, sidebarCollapsed, setSidebarCollapsed, isMobile, setIsMobile } = useLayoutStore();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const obsRef = useRef<IntersectionObserver | null>(null);
 
   // Detect mobile via media query (avoids SSR mismatch)
@@ -29,7 +28,7 @@ export default function Sidebar() {
     obsRef.current = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
-          if (e.isIntersecting) setActive(e.target.id);
+          if (e.isIntersecting) setActiveSection(e.target.id);
         }
       },
       { threshold: 0.35 }
@@ -45,6 +44,12 @@ export default function Sidebar() {
   }
 
   const sectionId = (href: string) => href.replace('#', '');
+
+  // Inject CSS variable for other components (like section padding)
+  useEffect(() => {
+    const w = isMobile ? (mobileOpen ? 200 : 0) : (sidebarCollapsed ? 60 : 200);
+    document.documentElement.style.setProperty('--sidebar-width', `${w}px`);
+  }, [sidebarCollapsed, isMobile, mobileOpen]);
 
   return (
     <>
@@ -70,9 +75,9 @@ export default function Sidebar() {
           zIndex: 100,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: collapsed ? 'center' : 'flex-start',
+          alignItems: sidebarCollapsed ? 'center' : 'flex-start',
           padding: '1.5rem 0',
-          width: collapsed ? 60 : 200,
+          width: sidebarCollapsed ? 60 : 200,
           background: 'rgba(3,8,16,0.85)',
           backdropFilter: 'blur(20px)',
           borderRight: '1px solid rgba(99,102,241,0.1)',
@@ -93,7 +98,7 @@ export default function Sidebar() {
           >
             KHJ
           </div>
-          {!collapsed && (
+          {!sidebarCollapsed && (
             <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>
               Kushal H J
             </span>
@@ -104,12 +109,12 @@ export default function Sidebar() {
         <ul className="flex flex-col gap-1 w-full px-2 flex-1">
           {navLinks.map((link, i) => {
             const Icon = ICONS[i];
-            const isact = active === sectionId(link.href);
+            const isact = activeSection === sectionId(link.href);
             return (
               <li key={link.href}>
                 <button
                   onClick={() => scrollTo(link.href)}
-                  title={collapsed ? link.label : undefined}
+                  title={sidebarCollapsed ? link.label : undefined}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -132,12 +137,12 @@ export default function Sidebar() {
                   }}
                 >
                   <Icon size={15} style={{ flexShrink: 0 }} />
-                  {!collapsed && (
+                  {!sidebarCollapsed && (
                     <span style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}>
                       {link.label}
                     </span>
                   )}
-                  {!collapsed && isact && (
+                  {!sidebarCollapsed && isact && (
                     <ChevronRight size={12} style={{ marginLeft: 'auto' }} />
                   )}
                 </button>
@@ -149,7 +154,7 @@ export default function Sidebar() {
         {/* Collapse toggle — desktop only */}
         <button
           className="hidden md:flex"
-          onClick={() => setCollapsed((c) => !c)}
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
           style={{
             alignItems: 'center',
             justifyContent: 'center',
@@ -162,9 +167,9 @@ export default function Sidebar() {
             cursor: 'pointer',
             transition: 'all 0.2s',
           }}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          <ChevronRight size={12} style={{ transform: collapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.3s' }} />
+          <ChevronRight size={12} style={{ transform: sidebarCollapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.3s' }} />
         </button>
       </aside>
 

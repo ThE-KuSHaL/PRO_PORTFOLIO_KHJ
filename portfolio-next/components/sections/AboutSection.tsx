@@ -24,7 +24,8 @@ export default function AboutSection() {
       aria-label="About"
       style={{
         padding: 'clamp(4rem,8vh,7rem) clamp(1.5rem,5vw,4rem)',
-        paddingLeft: 'calc(200px + clamp(1.5rem,4vw,4rem))',
+        paddingLeft: 'calc(var(--sidebar-width, 200px) + clamp(1.5rem,4vw,4rem))',
+        transition: 'padding-left 0.3s cubic-bezier(0.4,0,0.2,1)',
         position: 'relative',
         zIndex: 2,
       }}

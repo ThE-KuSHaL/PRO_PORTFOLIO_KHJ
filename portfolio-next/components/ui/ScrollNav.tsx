@@ -3,23 +3,24 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronUp, ChevronDown } from 'lucide-react';
+import { useLayoutStore } from '@/store/layoutStore';
 
 const SECTION_IDS = ['hero', 'about', 'education', 'skills', 'projects', 'venture', 'journey', 'contact'];
 
-function getNextSection(dir: 'up' | 'down'): string | null {
-  const sections = SECTION_IDS.map(id => document.getElementById(id)).filter(Boolean) as HTMLElement[];
-  const scrollY = window.scrollY + window.innerHeight * 0.4;
+function getNextSection(dir: 'up' | 'down', currentId: string): string | null {
+  let currentIndex = SECTION_IDS.indexOf(currentId);
+  if (currentIndex === -1) currentIndex = 0;
+  
   if (dir === 'up') {
-    const prev = [...sections].reverse().find(s => s.offsetTop < scrollY - 100);
-    return prev ? `#${prev.id}` : null;
+    return currentIndex > 0 ? `#${SECTION_IDS[currentIndex - 1]}` : null;
   } else {
-    const next = sections.find(s => s.offsetTop > scrollY);
-    return next ? `#${next.id}` : null;
+    return currentIndex < SECTION_IDS.length - 1 ? `#${SECTION_IDS[currentIndex + 1]}` : null;
   }
 }
 
 export default function ScrollNav() {
   const [visible, setVisible] = useState(false);
+  const { activeSection } = useLayoutStore();
 
   useEffect(() => {
     function onScroll() { setVisible(window.scrollY > 200); }
@@ -28,12 +29,12 @@ export default function ScrollNav() {
   }, []);
 
   function handleUp() {
-    const target = getNextSection('up');
+    const target = getNextSection('up', activeSection);
     if (target) document.querySelector(target)?.scrollIntoView({ behavior: 'smooth' });
     else window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   function handleDown() {
-    const target = getNextSection('down');
+    const target = getNextSection('down', activeSection);
     if (target) document.querySelector(target)?.scrollIntoView({ behavior: 'smooth' });
   }
 
@@ -56,9 +57,11 @@ export default function ScrollNav() {
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           style={{
             position: 'fixed',
-            left: 68, bottom: '5rem',
+            left: 'calc(var(--sidebar-width, 200px) + 24px)',
+            bottom: '5rem',
             display: 'flex', flexDirection: 'column', gap: 8,
             zIndex: 40,
+            transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         >
           <button onClick={handleUp} style={btnStyle} aria-label="Scroll up" data-cursor>

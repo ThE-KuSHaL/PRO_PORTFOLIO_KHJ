@@ -339,7 +339,8 @@ export default function EducationSection() {
         padding: isMobile
           ? '3rem 1.5rem 2rem'
           : 'clamp(4rem,8vh,7rem) clamp(1.5rem,5vw,4rem)',
-        paddingLeft: isMobile ? '1.5rem' : 'calc(200px + clamp(1.5rem,4vw,4rem))',
+        paddingLeft: isMobile ? '1.5rem' : 'calc(var(--sidebar-width, 200px) + clamp(1.5rem,4vw,4rem))',
+        transition: 'padding-left 0.3s cubic-bezier(0.4,0,0.2,1)',
       }}
     >
       {/* ── Atmospheric layers ── */}

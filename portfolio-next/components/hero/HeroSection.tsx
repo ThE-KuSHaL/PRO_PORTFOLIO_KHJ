@@ -66,7 +66,8 @@ export default function HeroSection() {
           padding: isMobile
             ? 'clamp(5rem, 10vh, 7rem) 1.5rem 3rem'
             : 'clamp(2rem, 5vw, 5rem) clamp(1.5rem, 4vw, 3.5rem)',
-          paddingLeft: isMobile ? '1.5rem' : 'calc(200px + clamp(1.5rem, 3vw, 3rem))',
+          paddingLeft: isMobile ? '1.5rem' : 'calc(var(--sidebar-width, 200px) + clamp(1.5rem, 3vw, 3rem))',
+          transition: 'padding-left 0.3s cubic-bezier(0.4,0,0.2,1)',
         }}
       >
         {/* KHJ Emblem — wrapper always has explicit dimensions so getBoundingClientRect works even at opacity:0 */}

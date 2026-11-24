@@ -7,6 +7,7 @@ import { Particles } from './Particles'
 import { RegionProjector } from './RegionProjector'
 import { PerfMonitor } from '../engine/PerfMonitor'
 import { CameraRig } from '../systems/CameraRig'
+import { ProximityGate } from './ProximityGate'
 
 /**
  * Assembles the 3D scene: dark background, cinematic rig, the merged brain on its
@@ -26,6 +27,7 @@ export function Stage({ particleCount }: { particleCount: number }) {
       <RegionProjector />
       <CameraRig />
       <PerfMonitor />
+      <ProximityGate />
 
       <OrbitControls
         makeDefault

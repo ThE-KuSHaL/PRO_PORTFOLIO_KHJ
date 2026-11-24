@@ -106,7 +106,7 @@ for i in range(9):
 # Branch whorls — golden-angle spacing, shrinking with height.
 tips = []   # (index, position, height) of terminal twigs for fruit anchoring
 golden = 2.39996
-heights = [0.30, 0.44, 0.58, 0.72, 0.86]
+heights = [0.20, 0.36, 0.52, 0.68, 0.84]
 branch_defs = []
 for w, h in enumerate(heights):
     count = 3 if w < 4 else 2
@@ -162,7 +162,7 @@ bm.to_mesh(me)
 bm.free()
 
 skin = obj.modifiers.new("Skin", "SKIN")
-skin.branch_smoothing = 0.7
+skin.branch_smoothing = 0.35
 skin.use_smooth_shade = True
 sub = obj.modifiers.new("Sub", "SUBSURF")
 sub.levels = 2

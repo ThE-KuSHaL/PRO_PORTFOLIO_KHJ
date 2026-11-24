@@ -21,7 +21,7 @@ _Paused at 16:10 IST on 2026-11-24 at the user's request. Resume when they say s
   Budgets in script: high 30k tris, mid 9k, low 2.8k. Geometry only (no materials/UVs).
 - Fruit nodes are named `fruit_10th`, `fruit_puc`, `fruit_be`; each node's **origin is its hang point**
   (read positions from the loaded GLB, do not hard-code). Current glTF-space anchors:
-  10th (0.794, 3.288, 2.314) · puc (-1.257, 3.536, 1.837) · be (2.075, 4.836, -1.015).
+  10th (0.770, 2.963, 2.319) · puc (-2.629, 3.551, -0.070) · be (1.820, 4.895, -1.384).
   Anchors change if the skeleton/seed changes.
 
 ## Run the build
@@ -31,9 +31,8 @@ _Paused at 16:10 IST on 2026-11-24 at the user's request. Resume when they say s
 (BlenderMCP add-on prints harmless "cannot start server in background mode" lines.)
 
 ## Known model issues / ideas
-- Trunk still looks bottle-shaped between the root flare and the first branch whorl (Skin modifier
-  smoothing). Try: lower `branch_smoothing`, add intermediate trunk verts, or apply a Smooth/Corrective
-  Smooth pass, or raise whorl 1 closer to the base.
+- Trunk bottle-neck FIXED (branch_smoothing 0.35, whorls lowered to 0.20–0.84). Model now reads as a
+  continuous trunk with roots flowing in; reasonable to move on to the web side.
 - No foliage by design (bare tree + glowing fruit). Optional: sparse leaf-cards at LOD high only.
 - Not yet added: ground/base disc, energy-vein attribute (plan: derive flow from world Y in shader).
 

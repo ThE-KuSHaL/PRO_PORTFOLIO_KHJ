@@ -78,32 +78,41 @@ interface PinConfig {
   href?: string;
   value?: string;
   btnLabel: string;
+  /** Optional second download shown beside the primary action. */
+  extra?: { label: string; href: string; filename: string };
+  filename?: string;
+}
+
+function downloadFile(href: string, filename: string) {
+  const a = document.createElement('a');
+  a.href = href; a.download = filename; a.click();
 }
 
 const PINS: PinConfig[] = [
   {
     id: 'linkedin', label: 'LinkedIn', icon: ExternalLink, accent: '#0ea5e9',
     pctX: 0.22, pctY: 0.38, dur: 2.8, delay: 0,
-    action: 'link', href: 'https://linkedin.com/in/kushalhj', // TODO
+    action: 'link', href: 'https://www.linkedin.com/in/kushal-h-j-10698b372/',
     btnLabel: 'Connect on LinkedIn',
   },
   {
     id: 'github', label: 'GitHub', icon: GitBranch, accent: '#6366f1',
     pctX: 0.45, pctY: 0.58, dur: 3.2, delay: 0.5,
-    action: 'link', href: 'https://github.com/kushalhj', // TODO
+    action: 'link', href: 'https://github.com/ThE-KuSHaL',
     btnLabel: 'View my code',
   },
   {
     id: 'mail', label: 'Email', icon: Mail, accent: '#06b6d4',
     pctX: 0.68, pctY: 0.32, dur: 3.0, delay: 1.0,
-    action: 'copy', value: 'kushalhj.dev@gmail.com',
+    action: 'copy', value: '1973jagadeesh.h.m.j@gmail.com',
     btnLabel: 'Copy email',
   },
   {
     id: 'resume', label: 'Resume', icon: FileText, accent: '#f59e0b',
     pctX: 0.80, pctY: 0.62, dur: 3.4, delay: 1.5,
-    action: 'download', href: '/resume.pdf', // TODO: place resume.pdf in /public
+    action: 'download', href: '/resume/Kushal_H_J_Resume_2026.pdf', filename: 'Kushal_H_J_Resume_2026.pdf',
     btnLabel: 'Download Resume',
+    extra: { label: 'Download CV', href: '/resume/Kushal_H_J_CV.pdf', filename: 'Kushal_H_J_CV.pdf' },
   },
 ];
 
@@ -121,8 +130,7 @@ function SinglePin({ pin, isOpen, onToggle }: { pin: PinConfig; isOpen: boolean;
     } else if (pin.action === 'link' && pin.href) {
       window.open(pin.href, '_blank', 'noopener,noreferrer');
     } else if (pin.action === 'download' && pin.href) {
-      const a = document.createElement('a');
-      a.href = pin.href; a.download = ''; a.click();
+      downloadFile(pin.href, pin.filename ?? '');
     }
   }
 
@@ -153,7 +161,7 @@ function SinglePin({ pin, isOpen, onToggle }: { pin: PinConfig; isOpen: boolean;
                 : { bottom: 'calc(100% + 14px)' }),
               left: '50%',
               transform: 'translateX(-50%)',
-              width: 200,
+              width: pin.extra ? 260 : 200,
               padding: '0.9rem 1.1rem',
               borderRadius: 10,
               background: 'rgba(3,8,20,0.96)',
@@ -183,6 +191,18 @@ function SinglePin({ pin, isOpen, onToggle }: { pin: PinConfig; isOpen: boolean;
             >
               {copied ? 'Copied ✓' : pin.btnLabel}
             </button>
+            {pin.extra && (
+              <button
+                onClick={(e) => { e.stopPropagation(); downloadFile(pin.extra!.href, pin.extra!.filename); }}
+                data-cursor
+                style={{
+                  marginLeft: 6, padding: '5px 12px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600,
+                  cursor: 'none', border: `1px solid ${pin.accent}66`, background: 'transparent', color: pin.accent,
+                }}
+              >
+                {pin.extra.label}
+              </button>
+            )}
 
             {/* Arrow pointer — flips direction to match card placement */}
             <div style={{
@@ -286,7 +306,7 @@ function MobileContactCards() {
             onClick={() => {
               if (pin.action === 'copy' && pin.value) handleCopy(pin.value);
               else if (pin.action === 'link' && pin.href) window.open(pin.href, '_blank', 'noopener,noreferrer');
-              else if (pin.action === 'download' && pin.href) { const a = document.createElement('a'); a.href = pin.href; a.download = ''; a.click(); }
+              else if (pin.action === 'download' && pin.href) downloadFile(pin.href, pin.filename ?? '');
             }}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -301,11 +321,19 @@ function MobileContactCards() {
             </div>
             <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f0f4ff' }}>{pin.label}</span>
             {pin.action === 'copy' && pin.value && (
-              <span style={{ fontSize: '0.65rem', color: copied ? '#22c55e' : 'rgba(255,255,255,0.4)', wordBreak: 'break-all' }}>
-                {copied ? 'Copied ✓' : pin.value}
+              <span style={{ fontSize: '0.65rem', color: copied ? '#22c55e' : 'rgba(255,255,255,0.64)', overflowWrap: 'normal' }}>
+                {copied ? 'Copied ✓' : pin.value.replace('@', '​@')}
               </span>
             )}
             <span style={{ fontSize: '0.68rem', fontWeight: 600, color: pin.accent }}>{pin.btnLabel} →</span>
+            {pin.extra && (
+              <button
+                onClick={(e) => { e.stopPropagation(); downloadFile(pin.extra!.href, pin.extra!.filename); }}
+                style={{ fontSize: '0.68rem', fontWeight: 600, color: pin.accent, background: 'transparent', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+              >
+                {pin.extra.label}
+              </button>
+            )}
           </motion.div>
         );
       })}

@@ -62,7 +62,7 @@
             background: var(--cy);
             z-index: 9999;
             box-shadow: 0 0 10px var(--cy);
-            transition: width .2s, height .2s, background .2s
+            transition: transform .2s, background .2s, box-shadow .2s
         }
 
         #cr {
@@ -70,19 +70,17 @@
             height: 32px;
             border: 1px solid rgba(6, 182, 212, .45);
             z-index: 9998;
-            transition: width .25s, height .25s
+            transition: transform .25s, border-color .25s
         }
 
         body.hov #cd {
-            width: 13px;
-            height: 13px;
+            transform: translate(-50%, -50%) scale(1.625);
             background: var(--in);
             box-shadow: 0 0 16px var(--in)
         }
 
         body.hov #cr {
-            width: 46px;
-            height: 46px;
+            transform: translate(-50%, -50%) scale(1.4375);
             border-color: rgba(99, 102, 241, .5)
         }
 
@@ -103,13 +101,15 @@
             bottom: 0;
             width: var(--sw);
             z-index: 200;
-            background: rgba(10, 10, 20, .8);
-            backdrop-filter: blur(18px);
+            background: rgba(10, 10, 20, .88);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-right: 1px solid var(--br);
             display: flex;
             flex-direction: column;
             padding: 1.4rem 0;
-            transition: transform .4s var(--e)
+            transition: transform .4s var(--e);
+            will-change: transform
         }
 
         #sb.col {
@@ -324,8 +324,7 @@
         .lcard {
             position: absolute;
             padding: .52rem 1rem;
-            background: rgba(3, 8, 20, .88);
-            backdrop-filter: blur(16px);
+            background: rgba(3, 8, 20, .92);
             border: 1px solid rgba(6, 182, 212, .55);
             border-radius: 8px;
             font-size: .68rem;
@@ -396,9 +395,11 @@
             transform: translateX(0)
         }
 
-        /* emblem glow when latched */
-        #embwrap.lat #embsvg svg {
-            filter: drop-shadow(0 0 18px rgba(6, 182, 212, .7))
+        /* emblem glow when latched — box-shadow on wrapper avoids SVG filter re-rasterization */
+        #embwrap.lat #embsvg {
+            filter: none;
+            border-radius: 50%;
+            box-shadow: 0 0 24px rgba(6, 182, 212, .5), 0 0 48px rgba(6, 182, 212, .2)
         }
 
         /* transparent bridge overlay so cursor can travel from emblem to cards */
@@ -926,7 +927,6 @@
             inset: 0;
             z-index: 500;
             background: rgba(0, 0, 0, .75);
-            backdrop-filter: blur(6px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -937,7 +937,9 @@
 
         #mo.op {
             opacity: 1;
-            pointer-events: auto
+            pointer-events: auto;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px)
         }
 
         #mb {
@@ -2511,109 +2513,148 @@
         document.getElementById('mc').addEventListener('click', closeModal);
         document.getElementById('mo').addEventListener('click', e => { if (e.target.id === 'mo') closeModal(); });
 
-        /* ── PCB BACKGROUND (CANVAS) ── */
+        /* ── PCB BACKGROUND (CANVAS) — OPTIMIZED ── */
+        /* Global pause flag for Visibility API */
+        let _pcbPaused = false;
+
         function initPCB() {
             const canvas = document.getElementById('pcb');
             const ctx = canvas.getContext('2d');
-            let w, h;
-            
-            function resize() {
-                w = window.innerWidth;
-                h = window.innerHeight;
-                const dpr = window.devicePixelRatio || 1;
-                canvas.width = w * dpr;
-                canvas.height = h * dpr;
-                ctx.scale(dpr, dpr);
-            }
-            window.addEventListener('resize', resize);
-            resize();
+            let w, h, dpr;
+            let staticCanvas = null; // Offscreen canvas for static grid
+            let staticDirty = true;
 
             const traces = [];
             const nodes = [];
-            const cols = ['6,182,212', '99,102,241']; // Cyan, Indigo
-            
-            const snap = 60; // Orthogonal grid step
-            
-            // Build rigid overlapping orthogonal traces
-            for (let i = 0; i < 55; i++) {
+            const cols = ['6,182,212', '99,102,241'];
+            const snap = 60;
+            const TRACE_COUNT = 30; // Reduced from 55
+
+            let resizeTimer = null;
+            function resize() {
+                w = window.innerWidth;
+                h = window.innerHeight;
+                dpr = window.devicePixelRatio || 1;
+                canvas.width = w * dpr;
+                canvas.height = h * dpr;
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Reset then scale — prevents compounding
+                staticDirty = true;
+            }
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(resize, 200);
+            });
+            resize();
+
+            // Build traces
+            for (let i = 0; i < TRACE_COUNT; i++) {
                 const isH = Math.random() > 0.5;
                 const pos = Math.floor((Math.random() * Math.max(w, h)) / snap) * snap;
                 const color = cols[Math.floor(Math.random() * cols.length)];
-                
-                // For animation pulses
                 const dashLen = 80 + Math.random() * 150;
                 const gapLen = 400 + Math.random() * 600;
                 const durMs = 8000 + Math.random() * 6000;
                 const offsetMs = Math.random() * 10000;
                 const speed = (dashLen + gapLen) / durMs;
-                
                 traces.push({ isH, pos, color, dashLen, gapLen, speed, offsetMs });
             }
-            
-            // Nodes at random intersections
+
+            // Nodes at intersections — reduced probability
             traces.forEach(t1 => {
                 if (t1.isH) {
                     traces.forEach(t2 => {
-                        if (!t2.isH && Math.random() > 0.85) {
+                        if (!t2.isH && Math.random() > 0.88) {
                             nodes.push({ x: t2.pos, y: t1.pos, c: t1.color });
                         }
                     });
                 }
             });
 
-            // Global cursor tracking
+            // Pre-group nodes by color for batched rendering
+            const nodesByColor = {};
+            nodes.forEach(n => {
+                if (!nodesByColor[n.c]) nodesByColor[n.c] = [];
+                nodesByColor[n.c].push(n);
+            });
+
+            // Build static layer (base grid lines + nodes) on offscreen canvas
+            function buildStatic() {
+                staticCanvas = document.createElement('canvas');
+                staticCanvas.width = w * dpr;
+                staticCanvas.height = h * dpr;
+                const sctx = staticCanvas.getContext('2d');
+                sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+                // Base grid lines
+                sctx.lineWidth = 1;
+                traces.forEach(t => {
+                    sctx.beginPath();
+                    if (t.isH) { sctx.moveTo(0, t.pos); sctx.lineTo(w, t.pos); }
+                    else { sctx.moveTo(t.pos, 0); sctx.lineTo(t.pos, h); }
+                    sctx.strokeStyle = `rgba(${t.color}, 0.05)`;
+                    sctx.stroke();
+                });
+
+                // Nodes — batched by color
+                Object.keys(nodesByColor).forEach(c => {
+                    // Inner dots
+                    sctx.beginPath();
+                    nodesByColor[c].forEach(n => {
+                        sctx.moveTo(n.x + 2, n.y);
+                        sctx.arc(n.x, n.y, 2, 0, Math.PI * 2);
+                    });
+                    sctx.fillStyle = `rgba(${c}, 0.35)`;
+                    sctx.fill();
+                    // Outer glow
+                    sctx.beginPath();
+                    nodesByColor[c].forEach(n => {
+                        sctx.moveTo(n.x + 4, n.y);
+                        sctx.arc(n.x, n.y, 4, 0, Math.PI * 2);
+                    });
+                    sctx.fillStyle = `rgba(${c}, 0.1)`;
+                    sctx.fill();
+                });
+
+                staticDirty = false;
+            }
+
+            // Cursor tracking
             let mx = -1000, my = -1000;
             document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; }, { passive: true });
 
             function render(now) {
+                if (_pcbPaused) { requestAnimationFrame(render); return; }
+                if (staticDirty) buildStatic();
+
                 ctx.clearRect(0, 0, w, h);
-                
-                // Base lines (dimmer)
+
+                // Draw cached static layer in one operation
+                ctx.setTransform(1, 0, 0, 1, 0, 0); // identity for drawImage
+                ctx.drawImage(staticCanvas, 0, 0);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // restore scaling
+
+                // Moving pulses only — the expensive-per-frame part
                 ctx.lineWidth = 1;
                 traces.forEach(t => {
-                    ctx.beginPath();
-                    if (t.isH) { ctx.moveTo(0, t.pos); ctx.lineTo(w, t.pos); }
-                    else { ctx.moveTo(t.pos, 0); ctx.lineTo(t.pos, h); }
-                    ctx.strokeStyle = `rgba(${t.color}, 0.05)`;
-                    ctx.stroke();
-                });
-
-                // Moving pulses
-                traces.forEach(t => {
-                    ctx.beginPath();
-                    if (t.isH) { ctx.moveTo(0, t.pos); ctx.lineTo(w, t.pos); }
-                    else { ctx.moveTo(t.pos, 0); ctx.lineTo(t.pos, h); }
-                    
                     const dist = ((now + t.offsetMs) * t.speed) % (t.dashLen + t.gapLen);
+                    ctx.beginPath();
+                    if (t.isH) { ctx.moveTo(0, t.pos); ctx.lineTo(w, t.pos); }
+                    else { ctx.moveTo(t.pos, 0); ctx.lineTo(t.pos, h); }
                     ctx.setLineDash([t.dashLen, t.gapLen]);
                     ctx.lineDashOffset = -dist;
-                    
                     ctx.strokeStyle = `rgba(${t.color}, 0.18)`;
                     ctx.stroke();
                 });
                 ctx.setLineDash([]);
-                
-                // Intersection nodes
-                nodes.forEach(n => {
-                    ctx.beginPath();
-                    ctx.arc(n.x, n.y, 2, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(${n.c}, 0.35)`;
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(n.x, n.y, 4, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(${n.c}, 0.1)`;
-                    ctx.fill();
-                });
 
-                // Radial ambient cursor glow mapping over the lines
+                // Cursor glow
                 if (mx >= 0 && my >= 0) {
-                    const grd = ctx.createRadialGradient(mx, my, 0, mx, my, 180);
+                    const grd = ctx.createRadialGradient(mx, my, 0, mx, my, 160);
                     grd.addColorStop(0, 'rgba(6,182,212,0.08)');
                     grd.addColorStop(1, 'transparent');
-                    
                     ctx.globalCompositeOperation = 'lighter';
                     ctx.beginPath();
-                    ctx.arc(mx, my, 180, 0, Math.PI * 2);
+                    ctx.arc(mx, my, 160, 0, Math.PI * 2);
                     ctx.fillStyle = grd;
                     ctx.fill();
                     ctx.globalCompositeOperation = 'source-over';
@@ -2624,22 +2665,17 @@
             requestAnimationFrame(render);
         }
 
-        /* ── EMBLEM SVG ── */
+        /* ── EMBLEM SVG — OPTIMIZED ── */
         function genSVG(id, sz, isAvt) {
             const c = sz >> 1, m = sz / 220;
-            const fid = isAvt ? 'af' : 'ef', fsid = isAvt ? 'afs' : 'efs';
+            const fid = isAvt ? 'af' : 'ef';
             
+            // Single lightweight blur for text glow only — removed double-blur merge
             const flts = `<defs>
-                <filter id="${fid}" x="-30%" y="-30%" width="160%" height="160%">
-                    <feGaussianBlur in="SourceGraphic" stdDeviation="${3 * m}" result="b1"/>
-                    <feGaussianBlur in="SourceGraphic" stdDeviation="${8 * m}" result="b2"/>
-                    <feMerge><feMergeNode in="b2"/><feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/></feMerge>
+                <filter id="${fid}" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="${3 * m}"/>
                 </filter>
-                <filter id="${fsid}" x="-15%" y="-15%" width="130%" height="130%">
-                    <feGaussianBlur in="SourceGraphic" stdDeviation="${2 * m}" result="b"/>
-                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-                <radialGradient id="coreGrad" cx="50%" cy="50%" r="50%">
+                <radialGradient id="coreGrad${isAvt?'A':''}" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stop-color="rgba(6,182,212,0.15)"/>
                     <stop offset="100%" stop-color="transparent"/>
                 </radialGradient>
@@ -2662,11 +2698,11 @@
                 const x1 = c + Math.cos(ang) * r1, y1 = c + Math.sin(ang) * r1;
                 const x2 = c + Math.cos(ang) * r2, y2 = c + Math.sin(ang) * r2;
                 const col = isCard ? '#06b6d4' : 'rgba(6,182,212,0.3)';
-                const w = isCard ? 1.5 * m : 0.8 * m;
-                ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${w}"/>`;
+                const wt = isCard ? 1.5 * m : 0.8 * m;
+                ticks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${wt}"/>`;
             }
 
-            // Traces
+            // Traces — NO filter on animated paths (was filter="url(#${fsid})")
             const paths = [
                 `M ${rO},0 L ${rO+16},0 L ${rO+16},24`,
                 `M ${rO*0.707},${rO*0.707} L ${rO*0.707+16},${rO*0.707} L ${rO*0.707+16},${rO*0.707+24}`,
@@ -2681,14 +2717,15 @@
                 const len = 40;
                 const dur = (2.4 + (i % 4) * 0.3).toFixed(1);
                 const beg = (i * 0.4).toFixed(1);
-                return `<path d="${d}" fill="none" stroke="${i%2===0 ? '#06b6d4' : '#6366f1'}" stroke-width="${1.5 * m}" stroke-dasharray="${len}" stroke-dashoffset="${len}" transform="translate(${c}, ${c})" filter="url(#${fsid})"><animate attributeName="stroke-dashoffset" values="${len};0;${len}" dur="${dur}s" begin="${beg}s" repeatCount="indefinite"/></path>`;
+                return `<path d="${d}" fill="none" stroke="${i%2===0 ? '#06b6d4' : '#6366f1'}" stroke-width="${1.5 * m}" stroke-dasharray="${len}" stroke-dashoffset="${len}" opacity="0.7" transform="translate(${c}, ${c})"><animate attributeName="stroke-dashoffset" values="${len};0;${len}" dur="${dur}s" begin="${beg}s" repeatCount="indefinite"/></path>`;
             }).join('');
 
             // Center
             const fs = isAvt ? 20 : 26;
+            const gradId = isAvt ? 'coreGradA' : 'coreGrad';
             const cen = `
                 <circle cx="${c}" cy="${c}" r="${rI - 2*m}" fill="rgba(3,8,16,0.94)"/>
-                <circle cx="${c}" cy="${c}" r="${rI - 2*m}" fill="url(#coreGrad)"/>
+                <circle cx="${c}" cy="${c}" r="${rI - 2*m}" fill="url(#${gradId})"/>
                 <text x="${c + (isAvt ? 1 : 2)}" y="${c + 2}" text-anchor="middle" dominant-baseline="middle" font-family="Space Grotesk,sans-serif" font-weight="700" font-size="${fs}" fill="#06b6d4" filter="url(#${fid})" letter-spacing="2">KHJ</text>
             `;
 
@@ -2802,7 +2839,9 @@
                 railV.setAttribute('y2', ry);
                 armG.setAttribute('opacity', 1 - t);
             }, () => {
-                armG.style.display = 'none';
+                // Cleanup: remove arm elements and SVG filter from DOM
+                armG.remove();
+                psvg.querySelector('defs').remove();
                 parm.style.pointerEvents = 'none';
                 initGlitch();
             });
@@ -2836,20 +2875,34 @@
             });
         }
 
-        /* ── CURSOR ── */
+        /* ── CURSOR — OPTIMIZED ── */
+        let _cursorPaused = false;
         function initCursor() {
             const d = document.getElementById('cd'), r = document.getElementById('cr');
             let mx = 0, my = 0, rx = 0, ry = 0;
+            const isHov = () => document.body.classList.contains('hov');
+
             document.addEventListener('mousemove', e => { 
                 mx = e.clientX; 
-                my = e.clientY; 
-                d.style.transform = `translate(${mx}px, ${my}px) translate(-50%, -50%)`; 
+                my = e.clientY;
+                // Dot follows instantly — include scale if hovered
+                if (isHov()) {
+                    d.style.transform = `translate(${mx}px, ${my}px) translate(-50%, -50%) scale(1.625)`;
+                } else {
+                    d.style.transform = `translate(${mx}px, ${my}px) translate(-50%, -50%)`;
+                }
             }, { passive: true });
             
             (function loop() { 
-                rx += (mx - rx) * 0.22; 
-                ry += (my - ry) * 0.22; 
-                r.style.transform = `translate(${rx}px, ${ry}px) translate(-50%, -50%)`; 
+                if (!_cursorPaused) {
+                    rx += (mx - rx) * 0.22; 
+                    ry += (my - ry) * 0.22;
+                    if (isHov()) {
+                        r.style.transform = `translate(${rx}px, ${ry}px) translate(-50%, -50%) scale(1.4375)`;
+                    } else {
+                        r.style.transform = `translate(${rx}px, ${ry}px) translate(-50%, -50%)`;
+                    }
+                }
                 requestAnimationFrame(loop); 
             })();
             
@@ -2861,45 +2914,30 @@
             document.addEventListener('mouseenter', () => { d.style.opacity = 1; r.style.opacity = 1; });
         }
 
-        /* ── SCROLL INDICATOR ── */
+        /* ── SCROLL INDICATOR — OPTIMIZED (no rAF loop) ── */
         function initScrollIndicator() {
             const si = document.querySelector('.si');
             if (!si) return;
-            let scrollTimer = null;
-            let continuousMs = 0;
-            let lastTick = performance.now();
+            let scrollStart = 0;
             let isVisible = false;
             let hideTimeout = null;
-            let isScrolling = false;
-            
-            window.addEventListener('scroll', () => {
-                isScrolling = true;
-                clearTimeout(scrollTimer);
-                scrollTimer = setTimeout(() => {
-                    isScrolling = false;
-                    continuousMs = 0;
-                }, 150);
-            }, { passive: true });
+            let scrollTimer = null;
 
-            requestAnimationFrame(function check(now) {
-                const delta = now - lastTick;
-                lastTick = now;
-                
-                if (isScrolling && !isVisible) {
-                    continuousMs += delta;
-                    if (continuousMs > 8000) {
-                        si.classList.add('vis');
-                        isVisible = true;
-                        clearTimeout(hideTimeout);
-                        hideTimeout = setTimeout(() => {
-                            si.classList.remove('vis');
-                            isVisible = false;
-                            continuousMs = 0;
-                        }, 5000);
-                    }
+            window.addEventListener('scroll', () => {
+                if (!scrollStart) scrollStart = Date.now();
+                clearTimeout(scrollTimer);
+                scrollTimer = setTimeout(() => { scrollStart = 0; }, 150);
+
+                if (!isVisible && scrollStart && (Date.now() - scrollStart) > 8000) {
+                    si.classList.add('vis');
+                    isVisible = true;
+                    clearTimeout(hideTimeout);
+                    hideTimeout = setTimeout(() => {
+                        si.classList.remove('vis');
+                        isVisible = false;
+                    }, 5000);
                 }
-                requestAnimationFrame(check);
-            });
+            }, { passive: true });
         }
 
         /* ── SIDEBAR ── */
@@ -2939,7 +2977,7 @@
             });
         }
 
-        /* ── JOURNEY S-CURVE ── */
+        /* ── JOURNEY S-CURVE — OPTIMIZED ── */
         function initJourney() {
             const path = document.getElementById('jpath');
             const g = document.getElementById('jmiles');
@@ -2979,25 +3017,42 @@
             });
             g.innerHTML = html;
 
-            const nodes = document.querySelectorAll('.j-milestone');
+            // Pre-cache all DOM refs at init — no queries during scroll
+            const nodeEls = document.querySelectorAll('.j-milestone');
+            const cachedRefs = Array.from(nodeEls).map(n => ({
+                el: n,
+                card: n.querySelector('.j-card'),
+                outerCircle: n.querySelectorAll('circle')[1],
+                revealed: false
+            }));
+
+            // rAF-throttled scroll handler with passive listener
+            let scrollTicking = false;
             window.addEventListener('scroll', () => {
-                const rect = path.getBoundingClientRect();
-                const vh = window.innerHeight;
-                let p = (vh - rect.top) / (rect.height + vh / 2);
-                p = Math.max(0, Math.min(1, p));
+                if (!scrollTicking) {
+                    scrollTicking = true;
+                    requestAnimationFrame(() => {
+                        const rect = path.getBoundingClientRect();
+                        const vh = window.innerHeight;
+                        let p = (vh - rect.top) / (rect.height + vh / 2);
+                        p = Math.max(0, Math.min(1, p));
 
-                path.style.strokeDashoffset = len * (1 - p);
+                        path.style.strokeDashoffset = len * (1 - p);
 
-                const currY = 20 + (860 * p);
-                nodes.forEach((n, i) => {
-                    if (currY >= miles[i].y - 60) {
-                        n.style.opacity = '1';
-                        n.style.transform = 'translateY(0)';
-                        n.querySelector('.j-card').classList.add('vis');
-                        n.querySelectorAll('circle')[1].setAttribute('opacity', '1');
-                    }
-                });
-            });
+                        const currY = 20 + (860 * p);
+                        cachedRefs.forEach((ref, i) => {
+                            if (!ref.revealed && currY >= miles[i].y - 60) {
+                                ref.el.style.opacity = '1';
+                                ref.el.style.transform = 'translateY(0)';
+                                ref.card.classList.add('vis');
+                                ref.outerCircle.setAttribute('opacity', '1');
+                                ref.revealed = true; // Don't re-process
+                            }
+                        });
+                        scrollTicking = false;
+                    });
+                }
+            }, { passive: true });
         }
 
         /* ── TYPEWRITER ── */
@@ -3011,9 +3066,24 @@
         /* ── GLITCH ── */
         function initGlitch() { const el = document.getElementById('hname'); el.classList.add('gl'); setTimeout(() => el.classList.remove('gl'), 1600); }
 
+        /* ── VISIBILITY API — PAUSE ANIMATIONS WHEN TAB HIDDEN ── */
+        document.addEventListener('visibilitychange', () => {
+            const hidden = document.hidden;
+            _pcbPaused = hidden;
+            _cursorPaused = hidden;
+            // Pause/resume all SMIL animations
+            const svgRoot = document.querySelector('svg');
+            if (svgRoot) {
+                try {
+                    if (hidden) svgRoot.pauseAnimations();
+                    else svgRoot.unpauseAnimations();
+                } catch(e) { /* SVG SMIL not supported */ }
+            }
+        });
+
         window.addEventListener('DOMContentLoaded', () => {
             genSVG('embsvg', 220, false);
-            genSVG('abtsvg', 160, true); // Adjusted size down slightly for about
+            genSVG('abtsvg', 160, true);
             initPCB();
             initCursor();
             initSidebar();

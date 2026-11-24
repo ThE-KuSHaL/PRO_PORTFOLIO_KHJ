@@ -1,549 +1,361 @@
 'use client';
+// The Roots — Blender-sculpted tree (public/models/tree_{low,mid,high}.glb) with custom shaders.
+//  • Bark shader: stretched value-noise albedo + height AO (cheaper on `low`).
+//  • Energy shader: emissive veins with pulses travelling from roots (low Y) to branch tips.
+//  • Fruits: fresnel glass + glowing core, brighter on hover/active; each is a click target.
+// Mesh size, DPR, antialiasing and frame rate are chosen by the device tier (see lib/device.ts).
 
-import React, { useRef, useEffect } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Html, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import type { GpuTier } from '@/lib/device';
 
 type NodeId = '10th' | 'puc' | 'be';
+type Tier = Exclude<GpuTier, 'none'>;
 
 interface EducationTree3DProps {
   activeNode: NodeId | null;
   hoveredNode: NodeId | null;
   onNodeClick: (id: NodeId) => void;
   onNodeHover: (id: NodeId | null) => void;
-  nodesData: {
-    id: NodeId;
-    year: string;
-    label: string;
-    isBE: boolean;
-  }[];
+  nodesData: { id: NodeId; year: string; label: string; isBE: boolean }[];
+  tier: Tier;
+  mobile: boolean;
 }
 
-const POSITIONS: Record<NodeId, THREE.Vector3> = {
-  '10th': new THREE.Vector3(5.5, -2.8, -2),
-  'puc': new THREE.Vector3(4.5, 0.5, -1),
-  'be': new THREE.Vector3(-1.0, 2.8, 1),
-};
+const FRUIT_RADIUS: Record<NodeId, number> = { '10th': 0.34, puc: 0.38, be: 0.5 }; // matches build_tree.py
+const COLORS: Record<NodeId, string> = { '10th': '#818cf8', puc: '#818cf8', be: '#22d3ee' };
+const FOV = 38;
+/** Bump whenever tools/blender/build_tree.py re-exports the GLBs — /models/* is cached as immutable. */
+const MODEL_VERSION = '6';
 
-export default function EducationTree3D({
-  activeNode,
-  hoveredNode,
-  onNodeClick,
-  onNodeHover,
-  nodesData,
-}: EducationTree3DProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const labelsContainerRef = useRef<HTMLDivElement>(null);
+// ── GLSL ────────────────────────────────────────────────────────────────────
+const NOISE = /* glsl */ `
+float hash31(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float vnoise(vec3 x){
+  vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash31(i), hash31(i + vec3(1,0,0)), f.x), mix(hash31(i + vec3(0,1,0)), hash31(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(hash31(i + vec3(0,0,1)), hash31(i + vec3(1,0,1)), f.x), mix(hash31(i + vec3(0,1,1)), hash31(i + vec3(1,1,1)), f.x), f.y), f.z);
+}`;
 
-  const activeNodeRef = useRef(activeNode);
-  const hoveredNodeRef = useRef(hoveredNode);
-  const onNodeHoverRef = useRef(onNodeHover);
-  const onNodeClickRef = useRef(onNodeClick);
+interface SharedUniforms {
+  uTime: { value: number };
+  uGain: { value: number };
+  uEnergy: { value: THREE.Color };
+}
 
-  useEffect(() => {
-    activeNodeRef.current = activeNode;
-    hoveredNodeRef.current = hoveredNode;
-    onNodeHoverRef.current = onNodeHover;
-    onNodeClickRef.current = onNodeClick;
-  }, [activeNode, hoveredNode, onNodeHover, onNodeClick]);
+function makeBark(tier: Tier, u: SharedUniforms) {
+  const rich = tier !== 'low';
+  const m = new THREE.MeshStandardMaterial({ color: new THREE.Color('#7a5a45'), roughness: 0.95, metalness: 0 });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uTime = u.uTime;
+    sh.uniforms.uGain = u.uGain;
+    sh.uniforms.uEnergy = u.uEnergy;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vP;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvP = position;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>\nvarying vec3 vP;\nuniform float uTime; uniform float uGain; uniform vec3 uEnergy;\n${NOISE}`)
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        float yy = clamp((vP.y + 2.4) / 7.8, 0.0, 1.0);
+        ${rich ? 'diffuseColor.rgb *= mix(0.55, 1.2, vnoise(vP * vec3(7.0, 1.6, 7.0)));' : ''}
+        diffuseColor.rgb *= mix(0.5, 1.0, smoothstep(0.0, 0.3, yy));`,
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+        float vein = ${
+          rich
+            ? 'smoothstep(0.93, 0.992, 1.0 - abs(vnoise(vP * 5.2) * 2.0 - 1.0))'
+            : 'pow(abs(sin(vP.x * 6.0 + vP.z * 5.0 + vP.y * 2.6)), 60.0)'
+        };
+        float ph = fract(yy * 1.15 - uTime * 0.11);
+        float pulse = smoothstep(0.0, 0.06, ph) * (1.0 - smoothstep(0.06, 0.38, ph));
+        totalEmissiveRadiance += uEnergy * vein * (0.22 + 2.4 * pulse) * uGain;`,
+      );
+  };
+  m.customProgramCacheKey = () => `bark-${tier}`;
+  return m;
+}
 
-  useEffect(() => {
-    if (!containerRef.current || !labelsContainerRef.current) return;
+function makeFruit(color: string, r: number) {
+  return new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color(color) }, uLit: { value: 0 }, uR: { value: r }, uTime: { value: 0 } },
+    transparent: true,
+    depthWrite: false,
+    vertexShader: /* glsl */ `
+      varying vec3 vN; varying vec3 vV; varying vec3 vL;
+      void main(){
+        vL = position;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vN = normalize(normalMatrix * normal);
+        vV = normalize(-mv.xyz);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor; uniform float uLit; uniform float uR; uniform float uTime;
+      varying vec3 vN; varying vec3 vV; varying vec3 vL;
+      void main(){
+        float stem = step(-0.95 * uR, vL.y);                 // stem, cap and neck
+        float f = pow(1.0 - clamp(dot(normalize(vN), normalize(vV)), 0.0, 1.0), 2.4);
+        float d = length((vL - vec3(0.0, -1.25 * uR, 0.0)) / vec3(uR, 1.18 * uR, uR));
+        float core = exp(-d * d * 2.2);
+        float flick = 0.94 + 0.06 * sin(uTime * 2.0 + vL.x * 9.0);
+        vec3 glow = uColor * (core * (1.7 + 2.0 * uLit) * flick + f * (1.1 + 1.3 * uLit));
+        float alpha = clamp(0.28 + f * 0.55 + core * 0.5 + uLit * 0.2, 0.0, 1.0);
+        vec3 metal = vec3(0.03, 0.04, 0.06) + vec3(0.12, 0.14, 0.18) * f;
+        gl_FragColor = vec4(mix(glow, metal, stem), mix(alpha, 1.0, stem));
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+  });
+}
 
-    // --- Scene Setup ---
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 100);
-    camera.position.set(0, 0, 8);
+let haloTex: THREE.CanvasTexture | null = null;
+function getHaloTexture() {
+  if (haloTex) return haloTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.35, 'rgba(255,255,255,0.35)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  haloTex = new THREE.CanvasTexture(c);
+  haloTex.colorSpace = THREE.SRGBColorSpace;
+  return haloTex;
+}
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    containerRef.current.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
+/** Camera distance + horizontal offset so the model's real bounds fit any aspect; desktop shifts it right of the copy. */
+function layoutFor(width: number, height: number, mobile: boolean, bh: number, bw: number) {
+  const aspect = width / Math.max(height, 1);
+  const half = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+  // phones: let the outermost twigs crop so the trunk and fruit stay large enough to read
+  const z = Math.max(bh / (2 * half), (bw * (mobile ? 0.74 : 1)) / (2 * half * aspect)) * 1.12;
+  const worldW = 2 * z * half * aspect;
+  return { z, offsetX: mobile ? 0 : worldW * 0.17 };
+}
 
-    // --- Content ---
-    const curve = new THREE.CatmullRomCurve3([
-      POSITIONS['10th'],
-      new THREE.Vector3(5.2, -1.0, -1.5),
-      POSITIONS['puc'],
-      new THREE.Vector3(1.5, 2.0, 0),
-      POSITIONS['be'],
-    ]);
+// ── Scene pieces ────────────────────────────────────────────────────────────
+interface FruitProps {
+  id: NodeId;
+  mesh: THREE.Mesh;
+  meta: EducationTree3DProps['nodesData'][number];
+  mobile: boolean;
+  active: boolean;
+  hovered: boolean;
+  onClick: () => void;
+  onHover: (h: boolean) => void;
+}
 
-    // Trunk Line
-    const points = curve.getPoints(150);
-    const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-    const lineMat = new THREE.LineBasicMaterial({
-      color: 0x6366f1,
-      transparent: true,
-      opacity: 0.15,
-      blending: THREE.AdditiveBlending
-    });
-    const line = new THREE.Line(lineGeo, lineMat);
-    scene.add(line);
+function Fruit({ id, mesh, meta, mobile, active, hovered, onClick, onHover }: FruitProps) {
+  const r = FRUIT_RADIUS[id];
+  const mat = useMemo(() => makeFruit(COLORS[id], r), [id, r]);
+  const group = useRef<THREE.Group>(null);
+  const halo = useRef<THREE.Sprite>(null);
+  const haloMat = useMemo(
+    () => new THREE.SpriteMaterial({ map: getHaloTexture(), color: COLORS[id], blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0 }),
+    [id],
+  );
+  useEffect(() => () => { mat.dispose(); haloMat.dispose(); }, [mat, haloMat]);
 
-    // Nodes (Hyper-detailed Bulbs)
-    const nodeMeshes: { id: NodeId, mesh: THREE.Group, isBE: boolean }[] = [];
-
-    nodesData.forEach(node => {
-      const group = new THREE.Group();
-      group.position.copy(POSITIONS[node.id]);
-
-      // INVERT: Rotate by 180 degrees so they hang like fruits from a branch
-      group.rotation.z = Math.PI;
-
-      const color = node.isBE ? 0x06b6d4 : 0x818cf8;
-
-      // 1. Outer Glass Layer
-      const glassGeo = new THREE.SphereGeometry(node.isBE ? 0.35 : 0.25, 32, 32);
-      const glassMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.15 });
-      const glassMesh = new THREE.Mesh(glassGeo, glassMat);
-      glassMesh.name = "glass";
-      glassMesh.position.y = node.isBE ? 0.3 : 0.25;
-      group.add(glassMesh);
-
-      // 1.1 Inner Glass Layer (adds depth refraction)
-      const innerGlassGeo = new THREE.SphereGeometry(node.isBE ? 0.30 : 0.20, 32, 32);
-      const innerGlassMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.05 });
-      const innerGlassMesh = new THREE.Mesh(innerGlassGeo, innerGlassMat);
-      innerGlassMesh.name = "innerGlass";
-      innerGlassMesh.position.y = glassMesh.position.y;
-      group.add(innerGlassMesh);
-
-      // 1.2 Structural Wireframe Cage (Sci-Fi detail)
-      const cageGeo = new THREE.IcosahedronGeometry(node.isBE ? 0.36 : 0.26, 2);
-      const cageMat = new THREE.MeshBasicMaterial({ color: 0x334155, wireframe: true, transparent: true, opacity: 0.15 });
-      const cageMesh = new THREE.Mesh(cageGeo, cageMat);
-      cageMesh.position.y = glassMesh.position.y;
-      group.add(cageMesh);
-
-      // 2. Complex Multi-part Filament Core
-      const filamentGroup = new THREE.Group();
-      filamentGroup.name = "filamentGroup";
-      filamentGroup.position.y = glassMesh.position.y;
-
-      const fMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.4 });
-
-      // Central rod
-      const fCoreGeo = new THREE.CylinderGeometry(0.015, 0.015, node.isBE ? 0.3 : 0.2, 8);
-      const fCore = new THREE.Mesh(fCoreGeo, fMat);
-      filamentGroup.add(fCore);
-
-      // Glowing tip
-      const fTipGeo = new THREE.SphereGeometry(0.035, 16, 16);
-      const fTip = new THREE.Mesh(fTipGeo, fMat);
-      fTip.position.y = node.isBE ? 0.15 : 0.1;
-      filamentGroup.add(fTip);
-
-      // Energy rings
-      const ringCount = 3;
-      for (let r = 0; r < ringCount; r++) {
-        const ringGeo = new THREE.TorusGeometry(0.06, 0.005, 8, 16);
-        const ring = new THREE.Mesh(ringGeo, fMat);
-        ring.rotation.x = Math.PI / 2;
-        ring.position.y = -0.05 + (r * 0.05);
-        filamentGroup.add(ring);
-      }
-      group.add(filamentGroup);
-
-      // 3. Hyper-detailed Hardware Base
-      const baseGroup = new THREE.Group();
-      baseGroup.position.y = 0;
-      const metalMat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
-      const threadMat = new THREE.MeshBasicMaterial({ color: 0x334155 });
-
-      // Socket Ring connecting glass to base
-      const socketRingGeo = new THREE.TorusGeometry(node.isBE ? 0.16 : 0.12, 0.02, 16, 32);
-      const socketRing = new THREE.Mesh(socketRingGeo, metalMat);
-      socketRing.rotation.x = Math.PI / 2;
-      socketRing.position.y = 0.05;
-      baseGroup.add(socketRing);
-
-      // Main upper base body
-      const baseMainGeo = new THREE.CylinderGeometry(node.isBE ? 0.16 : 0.12, node.isBE ? 0.16 : 0.12, 0.06, 32);
-      const baseMain = new THREE.Mesh(baseMainGeo, metalMat);
-      baseMain.position.y = 0.02;
-      baseGroup.add(baseMain);
-
-      // Realistic Screw Threads (4 loops)
-      const threadCount = 4;
-      const threadBaseY = -0.02;
-      for (let t = 0; t < threadCount; t++) {
-        const threadGeo = new THREE.TorusGeometry(node.isBE ? 0.14 : 0.10, 0.015, 16, 32);
-        const thread = new THREE.Mesh(threadGeo, threadMat);
-        thread.rotation.x = Math.PI / 2;
-        thread.position.y = threadBaseY - (t * 0.022);
-        baseGroup.add(thread);
-      }
-
-      // Bottom Contact Dome
-      const contactGeo = new THREE.SphereGeometry(node.isBE ? 0.13 : 0.09, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-      const contactMat = new THREE.MeshBasicMaterial({ color: 0x020617 }); // Pitch black insulator
-      const contact = new THREE.Mesh(contactGeo, contactMat);
-      contact.rotation.x = Math.PI; // Point down away from glass
-      contact.position.y = threadBaseY - (threadCount * 0.022) + 0.01;
-      baseGroup.add(contact);
-
-      // Central silver contact pin
-      const pinGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.03, 8);
-      const pinMat = new THREE.MeshBasicMaterial({ color: 0x94a3b8 });
-      const pin = new THREE.Mesh(pinGeo, pinMat);
-      pin.position.y = contact.position.y - (node.isBE ? 0.12 : 0.08);
-      baseGroup.add(pin);
-
-      group.add(baseGroup);
-
-      // 4. Rays (Lines coming out when active)
-      const raysGroup = new THREE.Group();
-      raysGroup.name = "rays";
-      raysGroup.position.y = glassMesh.position.y;
-      const rayCount = 12; // More rays!
-      const rayLength = node.isBE ? 0.15 : 0.1;
-      const rayDistance = node.isBE ? 0.45 : 0.35;
-
-      for (let i = 0; i < rayCount; i++) {
-        const angle = (i / rayCount) * Math.PI * 2;
-        const rayGeo = new THREE.BoxGeometry(0.02, rayLength, 0.02);
-        const rayMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0 });
-        const ray = new THREE.Mesh(rayGeo, rayMat);
-
-        ray.position.x = Math.cos(angle) * rayDistance;
-        ray.position.y = Math.sin(angle) * rayDistance;
-        ray.rotation.z = angle - Math.PI / 2;
-
-        raysGroup.add(ray);
-      }
-      group.add(raysGroup);
-
-      // 5. Glow (Halo)
-      const glowGeo = new THREE.SphereGeometry(node.isBE ? 0.8 : 0.6, 32, 32);
-      const glowMat = new THREE.MeshBasicMaterial({
-        color: color,
-        transparent: true,
-        opacity: 0.0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-      });
-      const glowMesh = new THREE.Mesh(glowGeo, glowMat);
-      glowMesh.name = "glow";
-      glowMesh.position.y = glassMesh.position.y;
-      group.add(glowMesh);
-
-      // Invisible Hitbox (reduced size for precise hover, proximity handles approach)
-      const hitGeo = new THREE.SphereGeometry(0.8, 16, 16);
-      const hitMat = new THREE.MeshBasicMaterial({ visible: false });
-      const hitMesh = new THREE.Mesh(hitGeo, hitMat);
-      hitMesh.userData = { id: node.id };
-      hitMesh.position.y = glassMesh.position.y;
-      group.add(hitMesh);
-
-      scene.add(group);
-      nodeMeshes.push({ id: node.id as NodeId, mesh: group, isBE: node.isBE });
-    });
-
-    // Particles
-    const particleCount = 12;
-    const pGeo = new THREE.SphereGeometry(0.025, 8, 8);
-    const pMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending });
-    const pMesh = new THREE.InstancedMesh(pGeo, pMat, particleCount);
-    scene.add(pMesh);
-
-    const particlesData = Array.from({ length: particleCount }).map(() => ({
-      offset: Math.random(),
-      speed: 0.0005 + Math.random() * 0.001,
-      jitter: Math.random() * 100
-    }));
-
-    // Ambient dust
-    const ambientCount = 60;
-    const ambientGeo = new THREE.BufferGeometry();
-    const ambientPos = new Float32Array(ambientCount * 3);
-    for (let i = 0; i < ambientCount * 3; i++) {
-      ambientPos[i] = (Math.random() - 0.5) * 15;
+  useFrame(({ clock }) => {
+    const target = active ? 1 : hovered ? 0.65 : 0;
+    const u = mat.uniforms;
+    u.uLit.value += (target - u.uLit.value) * 0.12;
+    u.uTime.value = clock.elapsedTime;
+    haloMat.opacity = 0.22 + u.uLit.value * 0.5;
+    if (halo.current) halo.current.scale.setScalar(r * (5 + u.uLit.value * 2.5));
+    if (group.current) {
+      const s = 1 + u.uLit.value * 0.1;
+      group.current.scale.lerp(new THREE.Vector3(s, s, s), 0.15);
+      group.current.rotation.z = Math.sin(clock.elapsedTime * 0.6 + mesh.position.x) * 0.03; // gentle sway from the hang point
     }
-    ambientGeo.setAttribute('position', new THREE.BufferAttribute(ambientPos, 3));
-    const ambientMat = new THREE.PointsMaterial({ color: 0x818cf8, size: 0.02, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending });
-    const ambientPoints = new THREE.Points(ambientGeo, ambientMat);
-    scene.add(ambientPoints);
+  });
 
-    // --- Interaction ---
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2(0, 0);
-    const targetMouse = new THREE.Vector2(0, 0);
-    let currentHover: NodeId | null = null;
+  const lit = active || hovered;
+  return (
+    <group ref={group} position={mesh.position}>
+      <mesh geometry={mesh.geometry} material={mat} />
+      <sprite ref={halo} material={haloMat} position={[0, -1.25 * r, 0]} />
+      {/* generous invisible hit target — much larger than the bulb, bigger again on touch */}
+      <mesh
+        position={[0, -1.25 * r, 0]}
+        onPointerOver={(e) => { e.stopPropagation(); onHover(true); }}
+        onPointerOut={() => onHover(false)}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+      >
+        <sphereGeometry args={[r * (mobile ? 3.4 : 2.5), 8, 8]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+      <Html position={[0, -3.0 * r, 0]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'auto' }}>
+        <button
+          onClick={onClick}
+          onMouseEnter={() => onHover(true)}
+          onMouseLeave={() => onHover(false)}
+          aria-label={`${meta.label}, ${meta.year}`}
+          style={{
+            background: 'rgba(3,8,20,0.72)', border: `1px solid ${COLORS[id]}55`, borderRadius: 8, cursor: 'pointer', textAlign: 'center', padding: mobile ? '3px 7px' : '5px 10px',
+            transform: mobile && id === 'puc' ? 'translateX(-30%)' : undefined,
+            color: lit ? '#ffffff' : 'rgba(255,255,255,0.78)', transition: 'color .3s, opacity .3s',
+            opacity: lit ? 1 : 0.85, textShadow: '0 2px 6px rgba(0,0,0,0.9)', whiteSpace: 'nowrap',
+          }}
+        >
+          <div style={{ fontSize: mobile ? '0.7rem' : meta.isBE ? '0.95rem' : '0.85rem', fontWeight: 600 }}>{meta.label}</div>
+          <div style={{ fontSize: mobile ? '0.62rem' : '0.7rem', fontWeight: 600, color: COLORS[id], marginTop: 2 }}>{meta.year}</div>
+        </button>
+      </Html>
+    </group>
+  );
+}
 
-    const onMouseMove = (e: MouseEvent) => {
-      const rect = containerRef.current!.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      targetMouse.set(x, y);
+function Scene(props: EducationTree3DProps) {
+  const { tier, mobile, activeNode, hoveredNode, onNodeClick, onNodeHover, nodesData } = props;
+  const { nodes } = useGLTF(`/models/tree_${tier}.glb?v=${MODEL_VERSION}`, '/draco/') as unknown as { nodes: Record<string, THREE.Mesh> };
+  const size = useThree((s) => s.size);
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const pointer = useThree((s) => s.pointer);
+  const root = useRef<THREE.Group>(null);
 
-      raycaster.setFromCamera(targetMouse, camera);
-      const intersects = raycaster.intersectObjects(scene.children, true);
+  const uniforms = useMemo<SharedUniforms>(
+    () => ({ uTime: { value: 0 }, uGain: { value: 1 }, uEnergy: { value: new THREE.Color('#22d3ee') } }),
+    [],
+  );
+  const bark = useMemo(() => makeBark(tier, uniforms), [tier, uniforms]);
+  useEffect(() => () => bark.dispose(), [bark]);
 
-      let foundHover: NodeId | null = null;
-      for (const intersect of intersects) {
-        if (intersect.object.userData && intersect.object.userData.id) {
-          foundHover = intersect.object.userData.id;
-          break;
-        }
-      }
+  const bounds = useMemo(() => {
+    const g = nodes.tree?.geometry;
+    if (!g) return { cy: 1.6, h: 8.4, w: 8 };
+    g.computeBoundingBox();
+    const b = g.boundingBox!;
+    return { cy: (b.min.y + b.max.y) / 2, h: b.max.y - b.min.y + 1.4, w: Math.max(b.max.x - b.min.x, b.max.z - b.min.z) };
+  }, [nodes]);
+  const { z, offsetX } = layoutFor(size.width, size.height, mobile, bounds.h, bounds.w);
+  useEffect(() => {
+    camera.fov = FOV;
+    camera.position.set(0, bounds.cy, z);
+    camera.lookAt(0, bounds.cy, 0);
+    camera.updateProjectionMatrix();
+  }, [camera, z, bounds]);
 
-      if (foundHover !== currentHover) {
-        currentHover = foundHover;
-        onNodeHoverRef.current(currentHover);
-        if (currentHover) {
-          containerRef.current!.style.cursor = 'pointer';
-        } else {
-          containerRef.current!.style.cursor = 'auto';
-        }
-      }
-    };
+  // ambient motes (skipped on the low tier)
+  const motes = useMemo(() => {
+    const n = tier === 'high' ? 120 : tier === 'mid' ? 60 : 0;
+    const g = new THREE.BufferGeometry();
+    const p = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      p[i * 3] = (Math.random() - 0.5) * 10;
+      p[i * 3 + 1] = -2 + Math.random() * 9;
+      p[i * 3 + 2] = (Math.random() - 0.5) * 6;
+    }
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    return { g, n };
+  }, [tier]);
+  useEffect(() => () => motes.g.dispose(), [motes]);
 
-    const onClickEvent = () => {
-      if (currentHover) {
-        onNodeClickRef.current(currentHover);
-      }
-    };
+  const groundMat = useMemo(
+    () => new THREE.MeshBasicMaterial({ map: getHaloTexture(), color: '#22d3ee', transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false }),
+    [],
+  );
+  useEffect(() => () => groundMat.dispose(), [groundMat]);
 
-    containerRef.current.addEventListener('mousemove', onMouseMove);
-    containerRef.current.addEventListener('click', onClickEvent);
+  useFrame(({ clock }) => {
+    uniforms.uTime.value = clock.elapsedTime;
+    uniforms.uGain.value += ((activeNode ? 1.6 : hoveredNode ? 1.25 : 1) - uniforms.uGain.value) * 0.06;
+    if (root.current && !mobile) {
+      root.current.rotation.y += ((pointer.x * 0.2 + Math.sin(clock.elapsedTime * 0.15) * 0.05) - root.current.rotation.y) * 0.04;
+    } else if (root.current) {
+      root.current.rotation.y = Math.sin(clock.elapsedTime * 0.2) * 0.08;
+    }
+  });
 
-    // --- Animation Loop ---
-    let frameId: number;
-    const dummy = new THREE.Object3D();
-    const projVector = new THREE.Vector3();
+  const tree = nodes.tree;
+  return (
+    <>
+      <hemisphereLight args={['#8fb4ff', '#1a1226', 1.15]} />
+      <directionalLight position={[4, 8, 5]} intensity={1.7} color="#d4e5ff" />
+      <directionalLight position={[-5, 3, -4]} intensity={1.3} color="#22d3ee" />
 
-    const animate = () => {
-      frameId = requestAnimationFrame(animate);
+      <group position={[offsetX, 0, 0]}>
+        <mesh position={[0, -1.35, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[8, 8, 1]} material={groundMat}>
+          <planeGeometry args={[1, 1]} />
+        </mesh>
+        <group ref={root}>
+          {tree && <mesh geometry={tree.geometry} material={bark} />}
+          {(['10th', 'puc', 'be'] as NodeId[]).map((id) => {
+            const mesh = nodes[`fruit_${id}`];
+            const meta = nodesData.find((n) => n.id === id);
+            if (!mesh || !meta) return null;
+            return (
+              <Fruit
+                key={id}
+                id={id}
+                mesh={mesh}
+                meta={meta}
+                mobile={mobile}
+                active={activeNode === id}
+                hovered={hoveredNode === id}
+                onClick={() => onNodeClick(id)}
+                onHover={(h) => onNodeHover(h ? id : null)}
+              />
+            );
+          })}
+        </group>
+        {motes.n > 0 && (
+          <points geometry={motes.g}>
+            <pointsMaterial color="#818cf8" size={0.035} transparent opacity={0.35} depthWrite={false} blending={THREE.AdditiveBlending} />
+          </points>
+        )}
+      </group>
+    </>
+  );
+}
 
-      mouse.lerp(targetMouse, 0.1);
-      // Parallax removed so 3D elements stay perfectly locked to the 2D background image
-      camera.lookAt(0, 0, 0);
+/** Low tier renders at ~30 fps on demand; other tiers run a normal loop. Both stop when off-screen. */
+function Pacer({ visible, tier }: { visible: boolean; tier: Tier }) {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    if (tier !== 'low' || !visible) return;
+    const id = window.setInterval(invalidate, 33);
+    return () => window.clearInterval(id);
+  }, [tier, visible, invalidate]);
+  return null;
+}
 
-      const active = activeNodeRef.current;
-      const hovered = hoveredNodeRef.current;
+export default function EducationTree3D(props: EducationTree3DProps) {
+  const { tier } = props;
+  const wrap = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(true);
 
-      nodeMeshes.forEach(({ id, mesh, isBE }) => {
-        const isActiveNode = active === id;
-        const isHoveredNode = hovered === id && !isActiveNode;
-
-        // Calculate Proximity to mouse (NDC space)
-        const bulbCenter = new THREE.Vector3().copy(mesh.position);
-        bulbCenter.project(camera);
-
-        // Aspect ratio correction so distance feels uniform
-        const aspect = containerRef.current!.clientWidth / containerRef.current!.clientHeight;
-        const dx = (targetMouse.x - bulbCenter.x) * aspect;
-        const dy = targetMouse.y - bulbCenter.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        // Proximity factor (0 to 1) starts taking effect when mouse is within ~0.6 units
-        const proximityThreshold = 0.6;
-        const proximity = Math.max(0, 1.0 - (dist / proximityThreshold));
-
-        const isLit = isActiveNode || isHoveredNode || proximity > 0.4;
-
-        // Dynamic scale based on proximity
-        let targetScale = 1.0;
-        if (isActiveNode) targetScale = 1.15;
-        else if (isHoveredNode) targetScale = 1.1;
-        else targetScale = 1.0 + (proximity * 0.05);
-        mesh.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
-
-        // 10th grade is firmly ROOTED, no floating animation. Others float gently.
-        if (id === '10th') {
-          mesh.position.y = POSITIONS[id].y;
-        } else {
-          mesh.position.y = POSITIONS[id].y + Math.sin(Date.now() * 0.0005 + POSITIONS[id].x) * 0.05;
-        }
-
-        const glass = mesh.getObjectByName("glass") as THREE.Mesh;
-        const innerGlass = mesh.getObjectByName("innerGlass") as THREE.Mesh;
-        const filamentGroup = mesh.getObjectByName("filamentGroup") as THREE.Group;
-        const raysGroup = mesh.getObjectByName("rays") as THREE.Group;
-        const glow = mesh.getObjectByName("glow") as THREE.Mesh;
-
-        // Color transition logic
-        let colorLerp = 0;
-        if (isActiveNode) colorLerp = 1.0;
-        else if (isHoveredNode) colorLerp = 0.6;
-        else colorLerp = proximity * 0.5; // Starts turning white as you approach
-        const baseColor = new THREE.Color(isBE ? 0x06b6d4 : 0x818cf8);
-        const finalTargetColor = baseColor.clone().lerp(new THREE.Color('#ffffff'), colorLerp);
-
-        // Animate Outer Glass
-        if (glass && glass.material) {
-          let targetOpacity = 0.15;
-          if (isActiveNode) targetOpacity = 0.8;
-          else if (isHoveredNode) targetOpacity = 0.45;
-          else targetOpacity = 0.15 + (proximity * 0.25); // Glows as you approach!
-
-          (glass.material as THREE.MeshBasicMaterial).opacity += (targetOpacity - (glass.material as THREE.MeshBasicMaterial).opacity) * 0.1;
-          (glass.material as THREE.MeshBasicMaterial).color.lerp(finalTargetColor, 0.1);
-        }
-
-        // Animate Inner Glass
-        if (innerGlass && innerGlass.material) {
-          let targetOpacity = 0.05;
-          if (isActiveNode) targetOpacity = 0.5;
-          else if (isHoveredNode) targetOpacity = 0.2;
-          else targetOpacity = 0.05 + (proximity * 0.1);
-
-          (innerGlass.material as THREE.MeshBasicMaterial).opacity += (targetOpacity - (innerGlass.material as THREE.MeshBasicMaterial).opacity) * 0.1;
-          (innerGlass.material as THREE.MeshBasicMaterial).color.lerp(finalTargetColor, 0.1);
-        }
-
-        // Animate Multi-part Filament
-        if (filamentGroup) {
-          let targetOpacity = 0.4;
-          if (isActiveNode) targetOpacity = 1.0;
-          else if (isHoveredNode) targetOpacity = 0.75;
-          else targetOpacity = 0.4 + (proximity * 0.3);
-
-          filamentGroup.children.forEach(child => {
-            if (child instanceof THREE.Mesh) {
-              const mat = child.material as THREE.MeshBasicMaterial;
-              mat.opacity += (targetOpacity - mat.opacity) * 0.1;
-              mat.color.lerp(finalTargetColor, 0.1);
-            }
-          });
-        }
-
-        // Animate Radial Rays
-        if (raysGroup) {
-          const targetRayOpacity = isActiveNode ? 1.0 : 0.0;
-          raysGroup.children.forEach(ray => {
-            const rMat = (ray as THREE.Mesh).material as THREE.MeshBasicMaterial;
-            rMat.opacity += (targetRayOpacity - rMat.opacity) * 0.1;
-            const targetColor = new THREE.Color(isActiveNode ? '#ffffff' : (isBE ? 0x06b6d4 : 0x818cf8));
-            rMat.color.lerp(targetColor, 0.1);
-          });
-          raysGroup.rotation.z += 0.005;
-        }
-
-        // Animate Halo Glow
-        if (glow && glow.material) {
-          let targetHalo = 0.0;
-          if (isActiveNode) targetHalo = 0.3;
-          else if (isHoveredNode) targetHalo = 0.15;
-          else targetHalo = proximity * 0.08;
-
-          (glow.material as THREE.MeshBasicMaterial).opacity += (targetHalo - (glow.material as THREE.MeshBasicMaterial).opacity) * 0.1;
-        }
-
-        // HTML Label positioning
-        projVector.copy(mesh.position);
-        projVector.y -= isBE ? 1.0 : 0.8;
-        projVector.project(camera);
-
-        const x = (projVector.x * .5 + .5) * containerRef.current!.clientWidth;
-        const y = (projVector.y * -.5 + .5) * containerRef.current!.clientHeight;
-
-        const labelEl = document.getElementById(`3d-label-${id}`);
-        if (labelEl) {
-          labelEl.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
-          labelEl.style.opacity = isLit ? '1' : '0.5';
-          labelEl.style.color = isLit ? '#ffffff' : 'rgba(255,255,255,0.6)';
-        }
-      });
-
-      // Update Particles
-      particlesData.forEach((p, i) => {
-        p.offset += p.speed;
-        if (p.offset > 1) p.offset = 0;
-
-        const pos = curve.getPointAt(p.offset);
-        dummy.position.copy(pos);
-        dummy.position.x += Math.sin(p.offset * 50 + p.jitter) * 0.05;
-        dummy.position.y += Math.cos(p.offset * 40 + p.jitter) * 0.05;
-        dummy.updateMatrix();
-        pMesh.setMatrixAt(i, dummy.matrix);
-      });
-      pMesh.instanceMatrix.needsUpdate = true;
-
-      ambientPoints.rotation.y += 0.0005;
-
-      renderer.render(scene, camera);
-    };
-
-    animate();
-
-    const onResize = () => {
-      if (!containerRef.current) return;
-      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    };
-    window.addEventListener('resize', onResize);
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener('resize', onResize);
-      if (containerRef.current) {
-        containerRef.current.removeEventListener('mousemove', onMouseMove);
-        containerRef.current.removeEventListener('click', onClickEvent);
-        if (rendererRef.current) {
-          containerRef.current.removeChild(rendererRef.current.domElement);
-          rendererRef.current.dispose();
-        }
-      }
-
-      lineGeo.dispose(); lineMat.dispose();
-      nodeMeshes.forEach(({ mesh }) => {
-        // Deep traverse to dispose geometries and materials properly to avoid memory leaks with complex geometry
-        mesh.traverse(child => {
-          if (child instanceof THREE.Mesh) {
-            child.geometry.dispose();
-            if (Array.isArray(child.material)) {
-              child.material.forEach(m => m.dispose());
-            } else {
-              (child.material as THREE.Material).dispose();
-            }
-          }
-        });
-      });
-      pGeo.dispose(); pMat.dispose();
-      ambientGeo.dispose(); ambientMat.dispose();
-    };
-  }, [nodesData]);
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { rootMargin: '100px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   return (
-    <div style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
-      <div
-        ref={containerRef}
-        style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }}
-      />
-      <div
-        ref={labelsContainerRef}
-        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+    <div ref={wrap} style={{ position: 'absolute', inset: 0 }}>
+      <Canvas
+        frameloop={tier === 'low' ? 'demand' : visible ? 'always' : 'never'}
+        dpr={tier === 'high' ? [1, 1.75] : tier === 'mid' ? [1, 1.5] : 1}
+        gl={{ antialias: tier !== 'low', alpha: true, powerPreference: tier === 'high' ? 'high-performance' : 'default', stencil: false }}
+        camera={{ fov: FOV, position: [0, 1.6, 13], near: 0.1, far: 60 }}
+        style={{ touchAction: 'pan-y' }}
+        aria-label="Interactive 3D tree of education milestones"
       >
-        {nodesData.map((node) => {
-          const isBE = node.isBE;
-          const color = isBE ? '#06b6d4' : '#818cf8';
-          return (
-            <div
-              key={node.id}
-              id={`3d-label-${node.id}`}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                willChange: 'transform',
-                textAlign: 'center',
-                transition: 'opacity 0.4s ease, color 0.4s ease',
-              }}
-            >
-              <div style={{ fontSize: isBE ? '0.9rem' : '0.8rem', fontWeight: 600, letterSpacing: '0.04em', marginBottom: '4px', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
-                {node.label}
-              </div>
-              <div style={{ fontSize: isBE ? '0.65rem' : '0.55rem', fontWeight: 700, color: color, letterSpacing: '0.12em', opacity: 0.8, textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
-                {node.year}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+        <Pacer visible={visible} tier={tier} />
+        <Suspense fallback={null}>
+          <Scene {...props} />
+        </Suspense>
+      </Canvas>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # The Roots — 3D tree: handoff / resume notes
 
-_Paused at 16:10 IST on 2026-11-24 at the user's request. Resume when they say so._
+_Paused at 16:10 IST on 2026-11-24, then RESUMED the same day. Web side now built and verified (see bottom)._
 
 ## What the user asked for (verbatim intent)
 - Replace the image in the **"THE ROOTS"** (Education) section with a proper 3D tree + "fruit story"
@@ -66,3 +66,20 @@ _Paused at 16:10 IST on 2026-11-24 at the user's request. Resume when they say s
 - Open user decisions: GitHub URL uses `ThE-KuSHaL` (hyphen) not the underscore they typed;
   2026 resume PDF is 6.2 MB (offer to compress); remaining sections (Projects/Venture/Journey/Contact)
   still use old internal styling for the design pass.
+
+## Update (resumed)
+- Web side built: `EducationTree3D.tsx` (R3F, bark+energy+fruit shaders, tiered mesh/DPR/fps), `useGpuTier()` in `lib/device.ts`,
+  Education section uses it (CSS atmosphere replaces the roots image). **After re-exporting GLBs bump `MODEL_VERSION` in EducationTree3D.tsx**
+  (`/models/*` is served `immutable`; a stale cached GLB showed old fruit positions during testing).
+
+## Status after resume — web side DONE (local, unpushed)
+- Verified: desktop (1440×900) tree fits, 3 fruits separated, click opens detail card; phone (390×844) loads
+  `tree_low.glb` (18 KB), labels fit; unthrottled foreground frame time 6 ms; phone tier at 6× CPU throttle:
+  p50 12 ms / p95 24 ms / max 36 ms. (Note: Playwright rAF drops to 1 Hz if the page isn't brought to front —
+  call `page.bringToFront()` before measuring.)
+- Tiers (lib/device.ts `computeGpuTier`): none → button list, low → 4.5k tris/DPR 1/30 fps, mid → 9k, high → 30k.
+- Bark/energy/fruit shaders live in EducationTree3D.tsx. `MODEL_VERSION` currently '6'.
+- Remaining ideas: ultra-lite static poster instead of buttons for tier `none`; keyboard focus ring on labels;
+  optional leaf cards on high; tune low-LOD faceting (raise `TIERS["low"].tris` if desired).
+- Still open from earlier: push (never without asking), SSO protection on *.vercel.app, 6.2 MB resume PDF,
+  styling pass on Projects/Venture/Journey/Contact.

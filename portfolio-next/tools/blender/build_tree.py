@@ -31,7 +31,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 TIERS = {
     "high": dict(tris=30000, fruit_sub=3),
     "mid":  dict(tris=9000,  fruit_sub=2),
-    "low":  dict(tris=2800,  fruit_sub=1),
+    "low":  dict(tris=4500,  fruit_sub=1),
 }
 
 random.seed(11)
@@ -205,21 +205,22 @@ print(f"[tree] full-res triangles: {FULL_TRIS}")
 
 # ── 3. fruits ───────────────────────────────────────────────────────────────
 tips_sorted = sorted(tips, key=lambda t: t[1].z)
-def pick(h_target, side, min_radial=2.0):
-    """Outer-canopy tip near a height target on one side (x sign) so fruit never hides in foliage."""
-    cands = [t for t in tips if (t[1].x * side) > 0.6 and math.hypot(t[1].x, t[1].y) >= min_radial]
+def pick(h_target, xmin, xmax):
+    """Tip nearest a height whose x lies in [xmin, xmax] — separates fruits in screen space
+    (the page camera looks down -Z in glTF space, i.e. along +Y in Blender)."""
+    cands = [t for t in tips if xmin <= t[1].x <= xmax]
     if not cands:
-        cands = [t for t in tips if (t[1].x * side) > 0.3]
+        cands = tips
     cands.sort(key=lambda t: abs(t[1].z - h_target))
     return cands[0]
 
-# 10th: low-right | PUC: mid-left | BE: crown, high-right (biggest, most outward).
+# Diagonal story: 10th low-left -> PUC mid-right -> B.E. crown (biggest, top-centre-right).
 anchors = {
-    "10th": pick(2.5, +1, 2.0),
-    "puc":  pick(3.5, -1, 2.0),
-    "be":   pick(4.9, +1, 1.3),
+    "10th": pick(2.7, -4.5, -2.0),
+    "puc":  pick(2.9, 2.4, 4.8),
+    "be":   pick(5.0, -0.2, 1.4),
 }
-FRUIT = {"10th": 0.26, "puc": 0.30, "be": 0.38}   # bulb radius per fruit (BE is the biggest)
+FRUIT = {"10th": 0.34, "puc": 0.38, "be": 0.50}   # bulb radius per fruit (BE is the biggest)
 
 def make_fruit(name, anchor_pos, radius, sub_level):
     bmf = bmesh.new()

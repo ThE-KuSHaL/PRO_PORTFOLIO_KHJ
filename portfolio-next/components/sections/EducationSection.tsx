@@ -11,7 +11,7 @@ import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import SectionLabel from '../ui/SectionLabel';
 import { semesterData } from '@/lib/data';
-import { useLite, useIsMobile } from '@/lib/device';
+import { useGpuTier, useIsMobile } from '@/lib/device';
 
 // three.js stays out of the main bundle; only fetched on capable devices near the viewport.
 const EducationTree3D = dynamic(() => import('./EducationTree3D'), { ssr: false });
@@ -311,7 +311,7 @@ function NodeModal({
 export default function EducationSection() {
   const ref = useRef<HTMLElement>(null);
   const nearView = useInView(ref, { once: true, margin: '400px' });
-  const lite = useLite();
+  const tier = useGpuTier();
   const [activeNode, setActiveNode] = useState<NodeId | null>(null);
   const [hoveredNode, setHoveredNode] = useState<NodeId | null>(null);
   const isMobile = useIsMobile();
@@ -383,21 +383,15 @@ export default function EducationSection() {
         }}
       />
 
-      {/* ── Background Cinematic Environment Layer ── */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/img/roots.webp"
-          srcSet="/img/roots-m.webp 800w, /img/roots.webp 1600w"
-          sizes="100vw"
-          alt="Immersive Cybernetic Environment"
-          loading="lazy"
-          decoding="async"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-        {/* Subtle darkening overlay to balance readability */}
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(2, 6, 23, 0.4)' }} />
-      </div>
+      {/* ── Atmosphere (pure CSS — the 3D tree is the scene now) ── */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute', inset: 0, zIndex: 0,
+          background:
+            'radial-gradient(ellipse 60% 55% at 68% 62%, rgba(34,211,238,0.10) 0%, transparent 70%), radial-gradient(ellipse 50% 45% at 30% 20%, rgba(99,102,241,0.12) 0%, transparent 70%), linear-gradient(180deg, #030814 0%, #050b1c 55%, #020617 100%)',
+        }}
+      />
 
       {/* ── Foreground Text Content ── */}
       <div style={{ pointerEvents: 'none', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: isMobile ? undefined : '800px', paddingBottom: isMobile ? '1.5rem' : '4rem' }}>
@@ -423,19 +417,27 @@ export default function EducationSection() {
         </div>
       </div>
 
-      {/* ── Background Environmental 3D Tree (capable devices) / simple node list (lite) ── */}
-      {lite === false && nearView && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
+      {/* ── 3D tree: absolute backdrop on desktop, in-flow block on phones ── */}
+      {tier && tier !== 'none' && nearView && (
+        <div
+          style={
+            isMobile
+              ? { position: 'relative', zIndex: 2, height: 'min(460px, 62vh)', marginTop: '0.5rem' }
+              : { position: 'absolute', inset: 0, zIndex: 2 }
+          }
+        >
           <EducationTree3D
             activeNode={activeNode}
             hoveredNode={hoveredNode}
             onNodeClick={handleNodeClick}
             onNodeHover={setHoveredNode}
             nodesData={NODES.map(n => ({ id: n.id, year: n.year, label: n.label, isBE: n.isBE }))}
+            tier={tier}
+            mobile={isMobile}
           />
         </div>
       )}
-      {lite === true && (
+      {tier === 'none' && (
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', gap: 10, padding: 0, maxWidth: 420 }}>
           {NODES.map((n) => (
             <button

@@ -16,7 +16,7 @@ import { useKeyboard } from './interaction/useKeyboard'
  */
 import './styles.css'
 
-export function CortexApp() {
+export function CortexApp({ active = true }: { active?: boolean }) {
   useKeyboard()
   return (
     <div className="cortex-container" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
@@ -24,7 +24,7 @@ export function CortexApp() {
 
 
       <ErrorBoundary>
-        <CortexCanvas />
+        <CortexCanvas active={active} />
         <PanelLayer />
         <Hud />
         <RegionNav />

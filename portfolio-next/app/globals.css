@@ -136,3 +136,52 @@ body {
 
   img, svg { max-width: 100%; }
 }
+
+/* ── LITE MODE (phones, low RAM/cores, data-saver, reduced-motion) ──
+   <html data-lite> is set by an inline script before first paint. */
+html[data-lite] *,
+html[data-lite] *::before,
+html[data-lite] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-lite] body { cursor: auto; }
+html[data-lite] a, html[data-lite] button, html[data-lite] [role="button"] { cursor: pointer; }
+html[data-lite] [class*="animate-glitch"] { animation: none !important; }
+html[data-lite] { scroll-behavior: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Skip layout/paint of off-screen sections until they approach the viewport */
+#about, #projects, #venture, #contact {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
+/* ── HERO responsive layout (CSS, so there is no JS-driven layout flash) ── */
+.hero-photo  { position: absolute; top: 0; bottom: 0; right: 0; left: 50%; z-index: 0; }
+.hero-col    {
+  position: relative; z-index: 2; display: flex; flex-direction: column; justify-content: center;
+  width: 50%;
+  padding: clamp(2rem, 5vw, 5rem) clamp(1.5rem, 4vw, 3.5rem);
+  padding-left: calc(var(--sidebar-width, 200px) + clamp(1.5rem, 3vw, 3rem));
+  transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hero-emblem { transform: scale(1); transform-origin: left center; }
+.hero-chip   { font-size: 0.7rem; padding: 4px 10px; }
+.hero-cta    { font-size: 0.82rem; padding: 10px 22px; }
+
+@media (max-width: 767px) {
+  .hero-photo  { left: 0; opacity: 0.35; }
+  .hero-col    { width: 100%; padding: clamp(5rem, 10vh, 7rem) 1.5rem 3rem; padding-left: 1.5rem; }
+  .hero-emblem { transform: scale(0.75); }
+  .hero-chip   { font-size: 0.65rem; padding: 3px 8px; }
+  .hero-cta    { font-size: 0.8rem; padding: 10px 20px; }
+}

@@ -44,10 +44,9 @@ export default function JourneySection() {
         <svg
           viewBox="0 0 800 920"
           width="100%"
-          height="auto" // Scale height gracefully
           overflow="visible"
           aria-hidden="true"
-          style={{ display: 'block' }}
+          style={{ display: 'block', height: 'auto' }}
         >
           <defs>
             <filter id="jglow2" x="-30%" y="-30%" width="160%" height="160%">

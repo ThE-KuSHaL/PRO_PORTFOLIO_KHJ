@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
 import SectionLabel from '@/components/ui/SectionLabel';
-import Image from 'next/image';
 
 const CHIPS = [
   '2nd Year · ISE',
@@ -72,11 +71,15 @@ export default function AboutSection() {
           >
             {/* Circular photo container — overflow:hidden clips the image cleanly */}
             <div style={{ width: 250, height: 250, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.05)', position: 'relative' }}>
-              <Image
-                src="/pfp_PORT.png"
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/img/pfp.webp"
                 alt="Kushal H J"
-                fill
-                style={{ objectFit: 'cover', objectPosition: 'center top' }}
+                width={250}
+                height={250}
+                loading="lazy"
+                decoding="async"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
               />
             </div>
             {/* Outer ring — sibling, not child, so it renders correctly outside clip on all browsers */}

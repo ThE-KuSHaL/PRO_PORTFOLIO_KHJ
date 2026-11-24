@@ -2,6 +2,7 @@
 // components/layout/Sidebar.tsx
 import { useEffect, useRef, useState } from 'react';
 import { useLayoutStore } from '@/store/layoutStore';
+import { useIsMobile } from '@/lib/device';
 import { navLinks } from '@/lib/data';
 import {
   Home, User, GraduationCap, Cpu, FolderOpen,
@@ -11,18 +12,10 @@ import {
 const ICONS = [Home, User, GraduationCap, Cpu, FolderOpen, Rocket, GitBranch, Mail];
 
 export default function Sidebar() {
-  const { activeSection, setActiveSection, sidebarCollapsed, setSidebarCollapsed, isMobile, setIsMobile } = useLayoutStore();
+  const { activeSection, setActiveSection, sidebarCollapsed, setSidebarCollapsed } = useLayoutStore();
+  const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = useState(false);
   const obsRef = useRef<IntersectionObserver | null>(null);
-
-  // Detect mobile via media query (avoids SSR mismatch)
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    const update = () => setIsMobile(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, []);
 
   useEffect(() => {
     obsRef.current = new IntersectionObserver(

@@ -13,9 +13,10 @@ const quality = QUALITY[detectTier()]
  * final post effect. Exposure is kept slightly dark so emissive energy reads as the
  * brightest element in the scene.
  */
-export function CortexCanvas() {
+export function CortexCanvas({ active = true }: { active?: boolean }) {
   return (
     <Canvas
+      frameloop={active ? 'always' : 'never'}
       shadows={{ type: PCFShadowMap }}
       dpr={[1, quality.maxPixelRatio]}
       role="img"

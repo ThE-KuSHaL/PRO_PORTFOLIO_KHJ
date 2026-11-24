@@ -1,294 +1,189 @@
 'use client';
 // components/background/PCBBackground.tsx
-// Premium animated PCB background using pre-rendered frame sequence
-// from public/inf_loop/ — canvas-based, GPU-efficient, ping-pong oscillation
-//
-// Playback uses a smoothed linear triangle wave:
-//   85% linear pacing (uniform speed in both directions)
-//   15% cosine blend (whisper-soft easing at reversal points only)
-//   Result: floating, ambient motion with weightless direction changes.
+// Ambient PCB background.
+//  • Lite devices (phones, low RAM, data-saver): one static dimmed poster — no canvas, no JS loop.
+//  • Full devices: a 75-frame 960×540 WebP ping-pong loop (≈2.8 MB, ≈155 MB decoded) drawn on a
+//    reduced-resolution canvas, started only after the page is idle, paused while the tab is
+//    hidden, and auto-disabled if the device can't draw it cheaply.
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
+import { useLite } from '@/lib/device';
 
-// ─── Configuration ───────────────────────────────────────────────────────────
-const FRAME_DIR =
-  '/inf_loop/Create_a_seamless_infinite_loop_202605122232_frames';
-const FRAME_PREFIX = 'Create_a_seamless_infinite_loop_202605122232_';
-const TOTAL_FRAMES = 150;
-const TARGET_FPS = 22;        // Render tick rate (GPU budget — unchanged)
-const CYCLE_DURATION = 70;    // Seconds for one full forward+reverse breath (nearly subconscious)
-const EASE_BLEND = 0.15;      // Cosine blend factor (0 = pure linear, 1 = full cosine)
-const SCALE_FACTOR = 1.08;    // Slight upscale to crop watermark edges
+const TOTAL_FRAMES = 75;
+const TARGET_FPS = 22;
+const CYCLE_DURATION = 70;   // seconds for one forward+reverse breath
+const EASE_BLEND = 0.15;     // 0 = linear triangle wave, 1 = full cosine
+const SCALE_FACTOR = 1.08;   // crop watermark edges
+const SHIFT_X = 0.04;        // keep brightest traces off the portrait
+const MAX_CANVAS_W = 960;    // canvas internal width cap (CSS stretches it)
+const BAIL_MS_PER_DRAW = 8;  // average draw cost above this → stop animating
 
-// Derived: angular velocity — one full cycle = 2π radians
 const THETA_SPEED = (2 * Math.PI) / CYCLE_DURATION;
+const frameSrc = (i: number) => `/bg/f${String(i).padStart(3, '0')}.webp`;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/** Build a zero-padded frame path */
-function framePath(index: number): string {
-  const padded = String(index).padStart(3, '0');
-  return `${FRAME_DIR}/${FRAME_PREFIX}${padded}.jpg`;
+function framePosition(theta: number, count: number): number {
+  const t = ((theta / (2 * Math.PI)) % 1 + 1) % 1;
+  const linear = t < 0.5 ? t * 2 : (1 - t) * 2;
+  const cosine = (1 - Math.cos(theta)) / 2;
+  return (linear * (1 - EASE_BLEND) + cosine * EASE_BLEND) * (count - 1);
 }
 
-/** Preload all frames into memory */
-function preloadFrames(): Promise<HTMLImageElement[]> {
-  return new Promise((resolve) => {
-    const images: HTMLImageElement[] = new Array(TOTAL_FRAMES);
-    let loaded = 0;
-
-    for (let i = 0; i < TOTAL_FRAMES; i++) {
-      const img = new Image();
-      img.decoding = 'async';
-      img.src = framePath(i + 1);
-
-      img.onload = () => {
-        images[i] = img;
-        loaded++;
-        if (loaded === TOTAL_FRAMES) resolve(images);
-      };
-
-      img.onerror = () => {
-        loaded++;
-        if (loaded === TOTAL_FRAMES) resolve(images);
-      };
-    }
-
-    // Safety timeout
-    setTimeout(() => {
-      if (loaded < TOTAL_FRAMES) resolve(images);
-    }, 30000);
-  });
-}
-
-// ─── Component ───────────────────────────────────────────────────────────────
 export default function PCBBackground() {
+  const lite = useLite();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const framesRef = useRef<HTMLImageElement[]>([]);
-  const thetaRef = useRef(0);
-  const animIdRef = useRef(0);
-  const lastFrameTimeRef = useRef(0);
-  const readyRef = useRef(false);
 
-  // ── Frame position from theta ──────────────────────────────────────────
-  // Blends a linear triangle wave (uniform speed) with a cosine curve
-  // (subtle endpoint easing). The blend factor controls how much easing
-  // is applied at reversal points — keeping it low (0.15) ensures the
-  // motion feels globally uniform with only a whisper of slowdown at turns.
-  const getFramePosition = useCallback((theta: number, frameCount: number): number => {
-    // Normalize theta into [0, 1) cycle position
-    const t = ((theta / (2 * Math.PI)) % 1 + 1) % 1;
-
-    // Linear triangle wave: perfectly uniform speed, 0→1→0
-    const linear = t < 0.5 ? t * 2 : (1 - t) * 2;
-
-    // Cosine curve: natural but aggressive endpoint easing, 0→1→0
-    const cosine = (1 - Math.cos(theta)) / 2;
-
-    // Blend: mostly linear with just a hint of cosine softness
-    const blended = linear * (1 - EASE_BLEND) + cosine * EASE_BLEND;
-
-    return blended * (frameCount - 1);
-  }, []);
-
-
-
-  // ── Draw blended frame onto canvas ─────────────────────────────────────
-  const drawFrame = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
-      canvas: HTMLCanvasElement,
-      img1: HTMLImageElement,
-      img2: HTMLImageElement | null,
-      blend: number
-    ) => {
-      if (!img1) return;
-
-      const cw = canvas.width;
-      const ch = canvas.height;
-      const imgAspect = img1.naturalWidth / img1.naturalHeight;
-      const canvasAspect = cw / ch;
-
-      // Cover-fit
-      let drawW: number, drawH: number;
-      if (canvasAspect > imgAspect) {
-        drawW = cw;
-        drawH = cw / imgAspect;
-      } else {
-        drawH = ch;
-        drawW = ch * imgAspect;
-      }
-
-      // Upscale to crop watermark
-      drawW *= SCALE_FACTOR;
-      drawH *= SCALE_FACTOR;
-
-      // Shift convergence ~8% left so brightest traces avoid the portrait region
-      const dx = (cw - drawW) / 2 - cw * 0.04;
-      const dy = (ch - drawH) / 2;
-
-      // Draw primary frame
-      ctx.globalAlpha = 1;
-      ctx.drawImage(img1, dx, dy, drawW, drawH);
-
-      // Cross-fade neighbor for smooth inter-frame blending
-      if (blend > 0.01 && img2) {
-        ctx.globalAlpha = blend;
-        ctx.drawImage(img2, dx, dy, drawW, drawH);
-      }
-
-      ctx.globalAlpha = 1;
-    },
-    []
-  );
-
-  // ── Render current oscillation state ───────────────────────────────────
-  // Direction-agnostic: always interpolate between floor and ceil of framePos.
-  // Whether framePos is increasing (forward) or decreasing (reverse),
-  // the blend between adjacent frames stays smooth and continuous.
-  const renderCurrentState = useCallback(
-    (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
-      const frames = framesRef.current;
-      if (!frames.length) return;
-
-      const framePos = getFramePosition(thetaRef.current, frames.length);
-      const idxA = Math.floor(framePos);
-      const idxB = Math.min(idxA + 1, frames.length - 1);
-      const blend = framePos - idxA;
-
-      const imgA = frames[idxA];
-      const imgB = frames[idxB];
-
-      if (imgA) drawFrame(ctx, canvas, imgA, imgB, blend);
-    },
-    [drawFrame, getFramePosition]
-  );
-
-  // ── Resize handler ─────────────────────────────────────────────────────
-  const handleResize = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    canvas.style.width = `${w}px`;
-    canvas.style.height = `${h}px`;
-
-    if (readyRef.current) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) renderCurrentState(ctx, canvas);
-    }
-  }, [renderCurrentState]);
-
-  // ── Main effect ────────────────────────────────────────────────────────
   useEffect(() => {
+    if (lite !== false) return;
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const ctx = canvas?.getContext('2d', { alpha: false });
+    if (!canvas || !ctx) return;
 
-    const ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx) return;
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
-    handleResize();
-    window.addEventListener('resize', handleResize, { passive: true });
-
-    const interval = 1000 / TARGET_FPS;
+    let frames: HTMLImageElement[] = [];
     let cancelled = false;
+    let stopped = false;
+    let raf = 0;
+    let theta = 0;
+    let last = 0;
+    let drawn = 0;
+    let cost = 0;
+    const interval = 1000 / TARGET_FPS;
 
-    function animate(timestamp: number) {
-      if (cancelled) return;
-      animIdRef.current = requestAnimationFrame(animate);
-
-      const elapsed = timestamp - lastFrameTimeRef.current;
-      if (elapsed < interval) return;
-
-      const dt = Math.min(elapsed, 100);
-      lastFrameTimeRef.current = timestamp - (elapsed % interval);
-
-      const frames = framesRef.current;
+    const draw = () => {
       if (!frames.length) return;
+      const pos = framePosition(theta, frames.length);
+      const a = Math.floor(pos);
+      const b = Math.min(a + 1, frames.length - 1);
+      const blend = pos - a;
+      const img = frames[a];
+      if (!img) return;
 
-      // Advance the oscillation angle
-      thetaRef.current += (dt / 1000) * THETA_SPEED;
-      if (thetaRef.current >= 2 * Math.PI) {
-        thetaRef.current -= 2 * Math.PI;
+      const cw = canvas.width, ch = canvas.height;
+      const aspect = img.naturalWidth / img.naturalHeight;
+      let w = cw, h = cw / aspect;
+      if (cw / ch < aspect) { h = ch; w = ch * aspect; }
+      w *= SCALE_FACTOR; h *= SCALE_FACTOR;
+      const dx = (cw - w) / 2 - cw * SHIFT_X;
+      const dy = (ch - h) / 2;
+
+      ctx.globalAlpha = 1;
+      ctx.drawImage(img, dx, dy, w, h);
+      if (blend > 0.01 && frames[b]) {
+        ctx.globalAlpha = blend;
+        ctx.drawImage(frames[b], dx, dy, w, h);
+        ctx.globalAlpha = 1;
       }
+    };
 
-      renderCurrentState(ctx!, canvas!);
-    }
+    const resize = () => {
+      const w = window.innerWidth, h = window.innerHeight;
+      const s = Math.min(1, MAX_CANVAS_W / w);
+      canvas.width = Math.round(w * s);
+      canvas.height = Math.round(h * s);
+      draw();
+    };
 
-    // Preload then start
-    preloadFrames().then((loadedFrames) => {
+    const tick = (ts: number) => {
+      raf = requestAnimationFrame(tick);
+      const elapsed = ts - last;
+      if (elapsed < interval) return;
+      last = ts - (elapsed % interval);
+      theta = (theta + (Math.min(elapsed, 100) / 1000) * THETA_SPEED) % (2 * Math.PI);
+
+      const t0 = performance.now();
+      draw();
+      cost += performance.now() - t0;
+      if (++drawn === 40 && cost / drawn > BAIL_MS_PER_DRAW) {
+        stopped = true;                 // too slow: freeze on the current frame
+        cancelAnimationFrame(raf);
+      }
+    };
+
+    const onVisibility = () => {
+      cancelAnimationFrame(raf);
+      if (!document.hidden && frames.length && !stopped && !cancelled) {
+        last = performance.now();
+        raf = requestAnimationFrame(tick);
+      }
+    };
+
+    const load = () => {
       if (cancelled) return;
+      const imgs: (HTMLImageElement | undefined)[] = new Array(TOTAL_FRAMES);
+      let done = 0;
+      const finish = () => {
+        if (cancelled) return;
+        frames = imgs.filter((i): i is HTMLImageElement => !!i);
+        if (frames.length < 2) return;
+        resize();
+        canvas.style.opacity = '1';
+        last = performance.now();
+        if (!document.hidden) raf = requestAnimationFrame(tick);
+      };
+      for (let i = 0; i < TOTAL_FRAMES; i++) {
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = () => { imgs[i] = img; if (++done === TOTAL_FRAMES) finish(); };
+        img.onerror = () => { if (++done === TOTAL_FRAMES) finish(); };
+        img.src = frameSrc(i);
+      }
+    };
 
-      const validFrames = loadedFrames.filter(Boolean);
-      if (validFrames.length === 0) return;
+    resize();
+    window.addEventListener('resize', resize, { passive: true });
+    document.addEventListener('visibilitychange', onVisibility);
 
-      framesRef.current = validFrames;
-      readyRef.current = true;
-      thetaRef.current = 0;
-      lastFrameTimeRef.current = performance.now();
-
-      drawFrame(ctx!, canvas!, validFrames[0], null, 0);
-      animIdRef.current = requestAnimationFrame(animate);
-    });
+    // Start only once the page is idle so the hero paints first.
+    const kick = () => {
+      const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+      if (ric) ric(load, { timeout: 2500 }); else setTimeout(load, 800);
+    };
+    if (document.readyState === 'complete') kick();
+    else window.addEventListener('load', kick, { once: true });
 
     return () => {
       cancelled = true;
-      cancelAnimationFrame(animIdRef.current);
-      window.removeEventListener('resize', handleResize);
-      framesRef.current = [];
-      readyRef.current = false;
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('load', kick);
+      document.removeEventListener('visibilitychange', onVisibility);
+      frames = [];
     };
-  }, [drawFrame, handleResize, renderCurrentState]);
+  }, [lite]);
 
   return (
     <div
       aria-hidden="true"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: -1,
-        pointerEvents: 'none',
-        overflow: 'hidden',
-      }}
+      style={{ position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none', overflow: 'hidden', background: '#030810' }}
     >
-      {/* Animated frame canvas — dimmed and softened */}
-      <canvas
-        ref={canvasRef}
+      {/* Static poster — the whole background on lite devices, the loading state otherwise */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/bg/poster.webp"
+        alt=""
+        decoding="async"
+        fetchPriority="low"
         style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          display: 'block',
-          filter: 'brightness(0.62) blur(1.2px)',
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', transform: `translateX(-${SHIFT_X * 100}%) scale(${SCALE_FACTOR})`,
         }}
       />
 
-      {/* Dark cinematic overlay — unifies composition, improves text readability */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'rgba(3, 8, 16, 0.35)',
-          pointerEvents: 'none',
-        }}
-      />
+      {lite === false && (
+        <canvas
+          ref={canvasRef}
+          style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            display: 'block', opacity: 0, transition: 'opacity 0.8s ease',
+          }}
+        />
+      )}
 
-      {/* Radial vignette — cinematic depth falloff */}
+      {/* Dim (replaces CSS brightness/blur filter, which is costly on a full-screen layer) */}
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(2,5,10,0.6)' }} />
       <div
         style={{
-          position: 'absolute',
-          inset: 0,
-          background:
-            'radial-gradient(ellipse 70% 60% at 40% 45%, transparent 0%, rgba(3,8,16,0.5) 65%, rgba(3,8,16,0.82) 100%)',
-          pointerEvents: 'none',
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse 70% 60% at 40% 45%, transparent 0%, rgba(3,8,16,0.5) 65%, rgba(3,8,16,0.82) 100%)',
         }}
       />
     </div>

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, ExternalLink, GitBranch, FileText } from 'lucide-react';
+import { useIsMobile } from '@/lib/device';
 import SectionLabel from '@/components/ui/SectionLabel';
 
 // ─── Map grid SVG ─────────────────────────────────────────────────────────────
@@ -318,16 +319,8 @@ const MAP_H = Math.round(MAP_W * (7 / 16)); // 16:7
 
 export default function ContactSection() {
   const [openPin, setOpenPin] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useIsMobile();
   const mapContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    const update = () => setIsMobile(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, []);
 
   useEffect(() => {
     function handler(e: MouseEvent) {

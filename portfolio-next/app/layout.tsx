@@ -1,14 +1,20 @@
 // app/layout.tsx
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Space_Grotesk } from 'next/font/google';
 import './globals.css';
+import { LITE_SCRIPT } from '@/lib/device';
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
   variable: '--font-space-grotesk',
   display: 'swap',
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#030810',
+};
 
 export const metadata: Metadata = {
   title: "Know Kushal H J | Portfolio",
@@ -37,7 +43,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={spaceGrotesk.variable}>
+    <html lang="en" className={spaceGrotesk.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: LITE_SCRIPT }} />
+      </head>
       <body className={`bg-bg text-tx antialiased overflow-x-hidden`}>
         {children}
       </body>

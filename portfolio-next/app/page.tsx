@@ -12,6 +12,7 @@ import ContactSection from '@/components/sections/ContactSection';
 import ScrollIndicator from '@/components/ui/ScrollIndicator';
 import ScrollToTop from '@/components/ui/ScrollToTop';
 import ScrollNav from '@/components/ui/ScrollNav';
+import { useLite } from '@/lib/device';
 
 const PCBBackground = dynamic(
   () => import('@/components/background/PCBBackground'),
@@ -33,18 +34,19 @@ const Sidebar = dynamic(
 );
 
 export default function Home() {
+  const lite = useLite();
   return (
     <>
       {/* Scroll to top on every load */}
       <ScrollToTop />
 
       {/* Fixed background */}
-      <CustomCursor />
+      {lite === false && <CustomCursor />}
       <PCBBackground />
 
 
       {/* Click spark effect — fires on every click site-wide */}
-      <ClickSpark sparkColor="#06b6d4" sparkCount={10} sparkSize={14} duration={500} />
+      {lite === false && <ClickSpark sparkColor="#06b6d4" sparkCount={10} sparkSize={14} duration={500} />}
 
       {/* Collapsible sidebar navigation */}
       <Sidebar />

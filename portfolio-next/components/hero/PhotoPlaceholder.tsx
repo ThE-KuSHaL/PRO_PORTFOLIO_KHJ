@@ -1,7 +1,7 @@
 'use client';
 // components/hero/PhotoPlaceholder.tsx
 import { motion } from 'framer-motion';
-import Image from 'next/image';
+import { useLite } from '@/lib/device';
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 
@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic';
 const LightRays = dynamic(() => import('@/components/ui/LightRays'), { ssr: false });
 
 export default function PhotoPlaceholder() {
+  const lite = useLite();
   const [imgError, setImgError] = useState(false);
 
   return (
@@ -28,18 +29,24 @@ export default function PhotoPlaceholder() {
       }}
     >
       {!imgError ? (
-        <Image
-          src="/till knee_PORT.png"
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src="/img/portrait.webp"
+          srcSet="/img/portrait-m.webp 640w, /img/portrait.webp 1100w"
+          sizes="(max-width: 767px) 100vw, 50vw"
           alt="Kushal H J"
-          fill
+          fetchPriority="high"
+          decoding="async"
+          width={1100}
+          height={1100}
+          onError={() => setImgError(true)}
           style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
             objectFit: 'cover',
             objectPosition: 'left bottom',
             transform: 'scaleX(-1) translateX(-8%)',
-            filter: 'brightness(1.02) contrast(1.02) saturate(0.93) drop-shadow(0 4px 20px rgba(0,0,0,0.4))'
+            filter: lite ? 'none' : 'brightness(1.02) contrast(1.02) saturate(0.93) drop-shadow(0 4px 20px rgba(0,0,0,0.4))',
           }}
-          onError={() => setImgError(true)}
-          priority
         />
       ) : (
         <div style={{
@@ -52,7 +59,7 @@ export default function PhotoPlaceholder() {
       )}
 
       {/* LightRays — restrained ambient atmospheric lighting */}
-      <LightRays
+      {lite === false && <LightRays
         rayCount={8}
         color="rgba(6,182,212,"
         colorAlt="rgba(99,102,241,"
@@ -61,7 +68,7 @@ export default function PhotoPlaceholder() {
         blur={32}
         fadeOnScroll={true}
         style={{ zIndex: 2 }}
-      />
+      />}
 
       {/* ── Edge dissolve — minimal feathering, background stays visible ── */}
 

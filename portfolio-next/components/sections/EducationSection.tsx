@@ -5,13 +5,16 @@
 // Hover illumination, contextual cards near nodes, enriched content.
 // Responsive: desktop horizontal layout, mobile stacked.
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
-import Image from 'next/image';
 import SectionLabel from '../ui/SectionLabel';
 import { semesterData } from '@/lib/data';
-import EducationTree3D from './EducationTree3D';
+import { useLite, useIsMobile } from '@/lib/device';
+
+// three.js stays out of the main bundle; only fetched on capable devices near the viewport.
+const EducationTree3D = dynamic(() => import('./EducationTree3D'), { ssr: false });
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -307,18 +310,11 @@ function NodeModal({
 
 export default function EducationSection() {
   const ref = useRef<HTMLElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-10%' });
+  const nearView = useInView(ref, { once: true, margin: '400px' });
+  const lite = useLite();
   const [activeNode, setActiveNode] = useState<NodeId | null>(null);
   const [hoveredNode, setHoveredNode] = useState<NodeId | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    const update = () => setIsMobile(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, []);
+  const isMobile = useIsMobile();
 
   const activeData = activeNode ? NODES.find((n) => n.id === activeNode) ?? null : null;
 
@@ -389,12 +385,15 @@ export default function EducationSection() {
 
       {/* ── Background Cinematic Environment Layer ── */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-        <Image
-          src="/roots_environment.webp"
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/img/roots.webp"
+          srcSet="/img/roots-m.webp 800w, /img/roots.webp 1600w"
+          sizes="100vw"
           alt="Immersive Cybernetic Environment"
-          fill
-          priority
-          style={{ objectFit: 'cover' }}
+          loading="lazy"
+          decoding="async"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
         />
         {/* Subtle darkening overlay to balance readability */}
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(2, 6, 23, 0.4)' }} />
@@ -424,16 +423,36 @@ export default function EducationSection() {
         </div>
       </div>
 
-      {/* ── Background Environmental 3D Tree ── */}
-      <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
-        <EducationTree3D
-          activeNode={activeNode}
-          hoveredNode={hoveredNode}
-          onNodeClick={handleNodeClick}
-          onNodeHover={setHoveredNode}
-          nodesData={NODES.map(n => ({ id: n.id, year: n.year, label: n.label, isBE: n.isBE }))}
-        />
-      </div>
+      {/* ── Background Environmental 3D Tree (capable devices) / simple node list (lite) ── */}
+      {lite === false && nearView && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
+          <EducationTree3D
+            activeNode={activeNode}
+            hoveredNode={hoveredNode}
+            onNodeClick={handleNodeClick}
+            onNodeHover={setHoveredNode}
+            nodesData={NODES.map(n => ({ id: n.id, year: n.year, label: n.label, isBE: n.isBE }))}
+          />
+        </div>
+      )}
+      {lite === true && (
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', gap: 10, padding: '0 1rem 1rem', maxWidth: 420 }}>
+          {NODES.map((n) => (
+            <button
+              key={n.id}
+              onClick={() => handleNodeClick(n.id)}
+              style={{
+                textAlign: 'left', padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                color: '#f0f4ff', background: 'rgba(8,12,28,0.88)',
+                border: `1px solid ${n.isBE ? 'rgba(6,182,212,0.5)' : 'rgba(129,140,248,0.4)'}`,
+              }}
+            >
+              <span style={{ display: 'block', fontSize: '0.68rem', color: n.isBE ? '#06b6d4' : '#818cf8', fontWeight: 700 }}>{n.year}</span>
+              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{n.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Centered Cinematic Modal Overlay ── */}
       <AnimatePresence mode="wait">

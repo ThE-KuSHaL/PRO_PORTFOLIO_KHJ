@@ -39,8 +39,7 @@ _Paused at 16:10 IST on 2026-11-24 at the user's request. Resume when they say s
 ## NOT started yet (next steps, in order)
 1. New `components/sections/EducationTree3D.tsx` (R3F, dynamic-imported, keep the **same props API**:
    `activeNode, hoveredNode, onNodeClick, onNodeHover, nodesData`) loading the GLB with DRACOLoader.
-   Copy decoder from `node_modules/three/examples/jsm/libs/draco/` to `public/draco/` and set
-   `useGLTF.setDecoderPath('/draco/')`.
+   Draco decoder already copied to `public/draco/` (done); set `useGLTF.setDecoderPath('/draco/')`.
 2. Pick LOD by device: `useLite()` → low; mid-range → mid; desktop (≥8 cores, ≥8 GB, not coarse) → high.
    Add an "ultra-lite" path (saveData / reduced-motion / deviceMemory ≤ 2) → static poster (render one
    from the browser) instead of WebGL. Cap DPR (1 on lite), no antialias on lite, 30 fps cap on lite,

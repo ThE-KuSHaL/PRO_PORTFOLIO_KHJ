@@ -103,8 +103,8 @@ body {
 
   /* ② Wipe sidebar left-offset from ALL sections */
   section {
-    padding-left: clamp(1rem, 4vw, 1.5rem) !important;
-    padding-right: clamp(1rem, 4vw, 1.5rem) !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
   }
 
   /* ③ Hero — allow full-width single-column (handled in JSX via isMobile state) */
@@ -125,14 +125,18 @@ body {
   /* ⑥ Journey SVG text — slightly smaller so labels fit */
   #journey text { font-size: 10px !important; }
 
-  /* ⑦ Education title area — ensure no extra offset */
-  #education { padding-left: 0 !important; padding-right: 0 !important; }
+  /* ⑦ consistent vertical rhythm — no forced full-screen heights on phones */
+  #about, #skills, #projects, #venture, #journey, #contact {
+    padding-top: 3.5rem !important;
+    padding-bottom: 3.5rem !important;
+    min-height: 0 !important;
+  }
 
   /* ⑧ Venture progress bar area */
-  #venture { padding-left: clamp(1rem, 4vw, 1.5rem) !important; padding-right: clamp(1rem, 4vw, 1.5rem) !important; }
+  #venture { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
 
   /* ⑨ Contact section — ensure grid card layout is readable */
-  #contact { padding-left: clamp(1rem, 4vw, 1.5rem) !important; padding-right: clamp(1rem, 4vw, 1.5rem) !important; }
+  #contact { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
 
   img, svg { max-width: 100%; }
 }
@@ -174,13 +178,17 @@ html[data-lite] { scroll-behavior: auto; }
   padding-left: calc(var(--sidebar-width, 200px) + clamp(1.5rem, 3vw, 3rem));
   transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.hero-portrait { transform: scaleX(-1) translateX(-8%); }
 .hero-emblem { transform: scale(1); transform-origin: left center; }
 .hero-chip   { font-size: 0.7rem; padding: 4px 10px; }
 .hero-cta    { font-size: 0.82rem; padding: 10px 22px; }
 
 @media (max-width: 767px) {
-  .hero-photo  { left: 0; opacity: 0.35; }
-  .hero-col    { width: 100%; padding: clamp(5rem, 10vh, 7rem) 1.5rem 3rem; padding-left: 1.5rem; }
+  .hero-photo  { left: 0; }
+  .hero-photo::after { content: ''; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+    background: linear-gradient(to right, rgba(3,8,16,0.94) 0%, rgba(3,8,16,0.82) 55%, rgba(3,8,16,0.5) 100%); }
+  .hero-portrait { transform: scaleX(-1); object-position: right bottom !important; }
+  .hero-col    { width: 100%; padding: clamp(5rem, 10vh, 7rem) 1.25rem 3rem; padding-left: 1.25rem; }
   .hero-emblem { transform: scale(0.75); }
   .hero-chip   { font-size: 0.65rem; padding: 3px 8px; }
   .hero-cta    { font-size: 0.8rem; padding: 10px 20px; }

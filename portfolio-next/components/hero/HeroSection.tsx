@@ -1,23 +1,20 @@
 'use client';
 // components/hero/HeroSection.tsx
-import { useRef, useState } from 'react';
-import { useLite } from '@/lib/device';
-import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
 import GlitchName from './GlitchName';
 import TypewriterRoles from './TypewriterRoles';
 import ProjectTicker from './ProjectTicker';
 import PhotoPlaceholder from './PhotoPlaceholder';
 import KHJEmblem from './KHJEmblem';
 
-const PrinterArm = dynamic(() => import('./PrinterArm'), { ssr: false });
-
 export default function HeroSection() {
-  const lite = useLite();
-  const [armFinished, setArmFinished] = useState(false);
-  const emblemRef = useRef<HTMLDivElement>(null);
-  // Lite devices skip the intro arm animation and show the emblem immediately.
-  const emblemVisible = lite === true || armFinished;
-  const armDone = lite !== false || armFinished;
+  const [emblemVisible, setEmblemVisible] = useState(false);
+
+  // The emblem's own layer-by-layer assembly plays shortly after load.
+  useEffect(() => {
+    const t = setTimeout(() => setEmblemVisible(true), 250);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <section
@@ -44,7 +41,6 @@ export default function HeroSection() {
       >
         {/* KHJ Emblem — wrapper always has explicit dimensions so getBoundingClientRect works even at opacity:0 */}
         <div
-          ref={emblemRef}
           className="hero-emblem"
           style={{
             position: 'relative',
@@ -59,14 +55,6 @@ export default function HeroSection() {
         >
           <KHJEmblem visible={emblemVisible} size={220} />
         </div>
-
-        {/* Printer arm — renders once on mount, calls onComplete to show emblem */}
-        {!armDone && (
-          <PrinterArm
-            emblemRef={emblemRef}
-            onComplete={() => setArmFinished(true)}
-          />
-        )}
 
         <GlitchName />
 

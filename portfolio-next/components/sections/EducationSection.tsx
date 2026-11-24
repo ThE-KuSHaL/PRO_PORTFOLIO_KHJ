@@ -333,9 +333,9 @@ export default function EducationSection() {
         overflow: 'hidden',
         background: '#020617',
         padding: isMobile
-          ? '3rem 1.5rem 2rem'
+          ? '3.5rem 1.25rem 3rem'
           : 'clamp(4rem,8vh,7rem) clamp(1.5rem,5vw,4rem)',
-        paddingLeft: isMobile ? '1.5rem' : 'calc(var(--sidebar-width, 200px) + clamp(1.5rem,4vw,4rem))',
+        paddingLeft: isMobile ? '1.25rem' : 'calc(var(--sidebar-width, 200px) + clamp(1.5rem,4vw,4rem))',
         transition: 'padding-left 0.3s cubic-bezier(0.4,0,0.2,1)',
       }}
     >
@@ -400,10 +400,10 @@ export default function EducationSection() {
       </div>
 
       {/* ── Foreground Text Content ── */}
-      <div style={{ pointerEvents: 'none', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: isMobile ? '70vh' : '800px', paddingBottom: isMobile ? '2rem' : '4rem' }}>
+      <div style={{ pointerEvents: 'none', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: isMobile ? undefined : '800px', paddingBottom: isMobile ? '1.5rem' : '4rem' }}>
 
         {/* Section header */}
-        <div style={{ pointerEvents: 'auto', marginTop: 'auto', marginBottom: 'auto', paddingLeft: isMobile ? '1rem' : '2rem' }}>
+        <div style={{ pointerEvents: 'auto', marginTop: 'auto', marginBottom: 'auto', paddingLeft: isMobile ? 0 : '2rem' }}>
           <SectionLabel color="#6366f1">Education</SectionLabel>
           <h2
             style={{
@@ -436,7 +436,7 @@ export default function EducationSection() {
         </div>
       )}
       {lite === true && (
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', gap: 10, padding: '0 1rem 1rem', maxWidth: 420 }}>
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', gap: 10, padding: 0, maxWidth: 420 }}>
           {NODES.map((n) => (
             <button
               key={n.id}

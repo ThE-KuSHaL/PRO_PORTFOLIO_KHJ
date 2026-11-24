@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useLayoutStore } from '@/store/layoutStore';
+import { useIsMobile } from '@/lib/device';
 
 const SECTION_IDS = ['hero', 'about', 'education', 'skills', 'projects', 'venture', 'journey', 'contact'];
 
@@ -21,6 +22,7 @@ function getNextSection(dir: 'up' | 'down', currentId: string): string | null {
 export default function ScrollNav() {
   const [visible, setVisible] = useState(false);
   const { activeSection } = useLayoutStore();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     function onScroll() { setVisible(window.scrollY > 200); }
@@ -46,6 +48,8 @@ export default function ScrollNav() {
     cursor: 'none', backdropFilter: 'blur(8px)',
     transition: 'border-color 0.2s, background 0.2s',
   };
+
+  if (isMobile) return null; // phones scroll natively; the buttons only covered content
 
   return (
     <AnimatePresence>

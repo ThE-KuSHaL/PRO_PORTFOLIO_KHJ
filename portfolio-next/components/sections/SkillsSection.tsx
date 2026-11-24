@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import SectionLabel from '@/components/ui/SectionLabel';
-import { skills } from '@/lib/data';
+import { REGIONS } from '../cortex/state/regions';
 import { useLite } from '@/lib/device';
 
 const CortexApp = dynamic(() => import('../cortex/App').then((m) => m.CortexApp), {
@@ -18,39 +18,65 @@ const CortexApp = dynamic(() => import('../cortex/App').then((m) => m.CortexApp)
   ),
 });
 
-const CHIP: Record<string, { color: string; bg: string }> = {
-  primary:   { color: '#06b6d4',               bg: 'rgba(6,182,212,0.12)' },
-  secondary: { color: '#818cf8',               bg: 'rgba(99,102,241,0.12)' },
-  dim:       { color: 'rgba(255,255,255,0.55)', bg: 'rgba(255,255,255,0.06)' },
-};
+// Mirrors cortex/config/palette.ts REGION_COLORS (kept local so the 3D bundle isn't pulled in).
+const REGION_HEX = ['#3EA8FF', '#2DFF88', '#FFB347', '#8C5BFF', '#57F7FF', '#FF6464', '#FFE45A'];
 
+/** Lightweight, WebGL-free version of the brain: tap a region to open its knowledge card. */
 function SkillsLite({ onLoad3D }: { onLoad3D: () => void }) {
+  const [open, setOpen] = useState<number>(0);
+  const region = REGIONS[open];
+  const color = REGION_HEX[open];
+
   return (
     <div style={{ position: 'relative', zIndex: 10 }}>
-      <div style={{ display: 'grid', gap: '0.9rem', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
-        {skills.map((cat) => (
-          <div key={cat.category} style={{ padding: '1rem', borderRadius: 12, border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(10,14,28,0.88)' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f0f4ff', marginBottom: '0.6rem' }}>
-              <span aria-hidden="true" style={{ color: '#06b6d4', marginRight: 8 }}>{cat.icon}</span>{cat.category}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {cat.items.map((it) => {
-                const c = CHIP[it.variant] ?? CHIP.dim;
-                return (
-                  <span key={it.label} style={{ fontSize: '0.72rem', fontWeight: 600, padding: '3px 9px', borderRadius: 999, color: c.color, background: c.bg, border: `1px solid ${c.color}33` }}>
-                    {it.label}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+      <div role="tablist" aria-label="Knowledge regions" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+        {REGIONS.map((r, i) => {
+          const active = i === open;
+          const c = REGION_HEX[i];
+          return (
+            <button
+              key={r.id}
+              role="tab"
+              aria-selected={active}
+              onClick={() => setOpen(i)}
+              style={{
+                textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', minHeight: 56,
+                color: '#f0f4ff', background: active ? `${c}1f` : 'rgba(10,14,28,0.88)',
+                border: `1px solid ${active ? c : 'rgba(255,255,255,0.12)'}`,
+                gridColumn: i === REGIONS.length - 1 ? '1 / -1' : undefined,
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', fontWeight: 700 }}>
+                <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: c, boxShadow: `0 0 8px ${c}` }} />
+                {r.name}
+              </span>
+              <span style={{ display: 'block', marginTop: 3, fontSize: '0.68rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.3 }}>{r.knowledge}</span>
+            </button>
+          );
+        })}
       </div>
+
+      <div
+        role="tabpanel"
+        style={{ marginTop: 12, padding: '16px', borderRadius: 12, background: 'rgba(10,14,28,0.92)', border: `1px solid ${color}66`, boxShadow: `0 0 24px ${color}1a` }}
+      >
+        <div style={{ fontSize: '0.68rem', letterSpacing: '0.16em', textTransform: 'uppercase', color, fontWeight: 700 }}>{region.name}</div>
+        <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f0f4ff', margin: '4px 0 6px' }}>{region.knowledge}</div>
+        <p style={{ margin: '0 0 12px', fontSize: '0.8rem', lineHeight: 1.5, color: 'rgba(255,255,255,0.6)' }}>{region.description}</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {region.skills.map((sk) => (
+            <span key={sk} style={{ fontSize: '0.72rem', fontWeight: 600, padding: '4px 10px', borderRadius: 999, color, background: `${color}1a`, border: `1px solid ${color}40` }}>
+              {sk}
+            </span>
+          ))}
+        </div>
+      </div>
+
       <button
         onClick={onLoad3D}
-        style={{ marginTop: '1.25rem', padding: '9px 16px', fontSize: '0.78rem', fontWeight: 600, color: '#06b6d4', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.4)', borderRadius: 8, cursor: 'pointer' }}
+        style={{ marginTop: 14, padding: '10px 16px', fontSize: '0.78rem', fontWeight: 600, color: '#06b6d4', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.4)', borderRadius: 8, cursor: 'pointer' }}
       >
-        Load interactive 3D brain (≈3.5 MB)
+        View 3D brain instead (≈3.5 MB)
       </button>
     </div>
   );

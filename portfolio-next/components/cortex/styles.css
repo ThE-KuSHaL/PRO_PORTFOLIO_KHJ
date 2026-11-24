@@ -28,6 +28,10 @@
 }
 
 .cortex-container canvas { display: block; touch-action: none; outline: none; }
+/* On touch screens a vertical swipe must scroll the page; horizontal drag still rotates. */
+/* (drei OrbitControls also sets touch-action:none inline on the canvas wrapper, hence the wildcard) */
+@media (pointer: coarse), (max-width: 720px) { .cortex-container, .cortex-container * { touch-action: pan-y !important; } }
+.hud__hint-touch { display: none; }
 
 /* ---- HUD overlay ---- */
 .hud {
@@ -355,7 +359,7 @@
 
 /* ---- Mobile bottom dock (docs/09: panels stack beneath the brain) ---- */
 .panel-dock {
-  position: fixed;
+  position: absolute; /* docked inside the section, not the whole viewport */
   left: 0;
   right: 0;
   bottom: 0;
@@ -418,12 +422,12 @@
 
 /* ---- Mobile HUD trims ---- */
 @media (max-width: 720px) {
-  .hud__lede { display: none; }
-  .hud__title { font-size: 24px; }
-  /* Hint sits below the (two-line) heading block; the lede is hidden on mobile so
-     the heading height is stable in both dormant and active states. */
-  .hud__hint { bottom: auto; top: 124px; left: 50%; }
-  .hud__status { top: clamp(20px, 4vw, 48px); bottom: auto; right: 16px; }
+  /* The portfolio section already shows the heading — drop the duplicate to stop overlap. */
+  .hud__heading { display: none; }
+  .hud__hint-desktop { display: none; }
+  .hud__hint-touch { display: inline; }
+  .hud__hint { top: 12px; bottom: auto; left: 50%; font-size: 10px; letter-spacing: 0.12em; }
+  .hud__status { top: 32px; bottom: auto; right: auto; left: 50%; transform: translateX(-50%); font-size: 10px; }
 }
 
 /* ---- Accessibility ---- */

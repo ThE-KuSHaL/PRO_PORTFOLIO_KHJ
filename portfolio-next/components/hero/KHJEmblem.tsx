@@ -1,6 +1,7 @@
 'use client';
 // components/hero/KHJEmblem.tsx
 import React, { useState, useRef, useEffect } from 'react';
+import { useLite } from '@/lib/device';
 import { AnimatePresence, motion, Variants } from 'framer-motion';
 import LatchCards from './LatchCards';
 
@@ -12,6 +13,7 @@ interface KHJEmblemProps {
 const r4 = (n: number) => Math.round(n * 10000) / 10000;
 
 export default function KHJEmblem({ visible, size = 220 }: KHJEmblemProps) {
+  const lite = useLite();
   const [isOpen, setIsOpen] = useState(false);
   const [openKey, setOpenKey] = useState(0); // increments on each open so AnimatePresence sees a fresh mount
   const [showHint, setShowHint] = useState(true);
@@ -130,8 +132,8 @@ export default function KHJEmblem({ visible, size = 220 }: KHJEmblemProps) {
         onMouseLeave={handleCancel}
         // Bobbing floating animation stacked with isometric view
         initial={{ rotateX: 60, rotateZ: -45 }}
-        animate={visible ? { rotateX: 60, rotateZ: -45, y: [0, -6, 0] } : { rotateX: 60, rotateZ: -45, y: 0 }}
-        transition={visible ? { y: { duration: 4, repeat: Infinity, ease: "easeInOut" } } : {}}
+        animate={visible && !lite ? { rotateX: 60, rotateZ: -45, y: [0, -6, 0] } : { rotateX: 60, rotateZ: -45, y: 0 }}
+        transition={visible && !lite ? { y: { duration: 4, repeat: Infinity, ease: "easeInOut" } } : {}}
         style={{
           cursor: 'pointer',
           position: 'relative',

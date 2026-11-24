@@ -2,7 +2,7 @@ import { Canvas } from '@react-three/fiber'
 import { NoToneMapping, PCFShadowMap } from 'three'
 import { Stage } from './Stage'
 import { Effects } from './Effects'
-import { QUALITY, detectTier } from '../config/quality'
+import { QUALITY, detectTier, baseCameraDistance } from '../config/quality'
 import { useCortex } from '../state/cortexStore'
 
 const quality = QUALITY[detectTier()]
@@ -31,7 +31,8 @@ export function CortexCanvas({ active = true }: { active?: boolean }) {
         toneMappingExposure: 0.9,
       }}
       onPointerMissed={() => useCortex.getState().clearBackground()}
-      onCreated={({ gl }) => {
+      onCreated={({ gl, camera, size }) => {
+        camera.position.z = baseCameraDistance(size.width / size.height)
         // Recover gracefully from a lost GPU context instead of freezing on a black frame.
         const canvas = gl.domElement
         canvas.addEventListener(

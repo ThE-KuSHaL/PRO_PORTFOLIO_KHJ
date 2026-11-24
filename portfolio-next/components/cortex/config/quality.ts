@@ -36,3 +36,12 @@ export function detectTier(): Tier {
   if (cores <= 4 || mem <= 4) return 'B'
   return 'A'
 }
+
+/**
+ * Orbit distance that keeps the whole brain inside the frame. Landscape keeps the original
+ * 4.5; portrait (phones) pulls back so the brain's width fits instead of being cropped.
+ */
+export function baseCameraDistance(aspect: number): number {
+  if (!isFinite(aspect) || aspect >= 1.2) return 4.5
+  return Math.min(7.4, 4.5 * Math.max(1, 1.2 / Math.max(aspect, 0.45)) * 0.8)
+}

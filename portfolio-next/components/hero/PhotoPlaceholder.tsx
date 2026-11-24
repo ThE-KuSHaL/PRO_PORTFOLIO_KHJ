@@ -40,11 +40,11 @@ export default function PhotoPlaceholder() {
           width={1100}
           height={1100}
           onError={() => setImgError(true)}
+          className="hero-portrait"
           style={{
             position: 'absolute', inset: 0, width: '100%', height: '100%',
             objectFit: 'cover',
             objectPosition: 'left bottom',
-            transform: 'scaleX(-1) translateX(-8%)',
             filter: lite ? 'none' : 'brightness(1.02) contrast(1.02) saturate(0.93) drop-shadow(0 4px 20px rgba(0,0,0,0.4))',
           }}
         />

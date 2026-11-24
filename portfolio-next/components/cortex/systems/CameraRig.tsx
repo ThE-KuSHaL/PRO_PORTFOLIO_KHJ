@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Vector3, Quaternion } from 'three'
 import { brainRuntime } from '../brain/brainRuntime'
 import { useCortex } from '../state/cortexStore'
+import { baseCameraDistance } from '../config/quality'
 
 /**
  * Subtle camera choreography (docs/01.5, 07): the orbit target eases toward the mean
@@ -74,7 +75,7 @@ export function CameraRig() {
         targetDir.copy(brainRuntime.anchorNormals[focus]).applyQuaternion(g.quaternion).normalize()
       }
       
-      targetDist = 4.5 * 0.85
+      targetDist = baseCameraDistance(_.size.width / _.size.height) * 0.85
     } else if (lastIdleDir.current != null && lastIdleDist.current != null) {
       isFlying = true
       // Smoothly return to the previous idle orientation and distance

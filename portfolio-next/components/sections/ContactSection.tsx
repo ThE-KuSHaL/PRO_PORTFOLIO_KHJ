@@ -346,10 +346,10 @@ export default function ContactSection() {
       className="max-md:pl-8 max-md:pr-8"
     >
       <SectionLabel color="#06b6d4">Contact</SectionLabel>
-      <h2 style={{ fontSize: 'clamp(1.8rem,3.5vw,2.8rem)', fontWeight: 700, marginBottom: '0.25rem', color: '#f0f4ff' }}>
+      <h2 className="sec-title">
         Let&apos;s build something.
       </h2>
-      <p style={{ fontSize: '0.88rem', color: 'rgba(255,255,255,0.45)', marginBottom: '2.5rem', maxWidth: 460 }}>
+      <p className="sec-sub">
         Building something ambitious? Need an IoT system or AI-powered product? Drop a pin.
       </p>
 

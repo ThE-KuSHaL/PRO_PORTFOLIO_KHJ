@@ -41,10 +41,10 @@ export default function ProjectsSection() {
       className="max-md:pl-8 max-md:pr-8"
     >
       <SectionLabel color="#06b6d4">Projects</SectionLabel>
-      <h2 style={{ fontSize: 'clamp(1.8rem,3.5vw,2.8rem)', fontWeight: 700, marginBottom: '0.25rem', color: '#f0f4ff' }}>
+      <h2 className="sec-title">
         What I&apos;ve shipped.
       </h2>
-      <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', marginBottom: '2.5rem' }}>
+      <p className="sec-sub">
         Real systems, real impact.
       </p>
 
@@ -122,7 +122,7 @@ export default function ProjectsSection() {
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f0f4ff', marginBottom: '0.2rem' }}>
                   {project.name}
                 </h3>
-                <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', marginBottom: '0.9rem' }}>
+                <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.64)', marginBottom: '0.9rem' }}>
                   {project.subtitle}
                 </p>
 
@@ -137,7 +137,7 @@ export default function ProjectsSection() {
                         padding: '2px 8px',
                         borderRadius: 999,
                         background: 'rgba(255,255,255,0.05)',
-                        color: 'rgba(255,255,255,0.45)',
+                        color: 'rgba(255,255,255,0.64)',
                         border: '1px solid rgba(255,255,255,0.08)',
                       }}
                     >

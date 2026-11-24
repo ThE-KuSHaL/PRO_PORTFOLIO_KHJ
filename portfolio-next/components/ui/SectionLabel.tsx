@@ -1,26 +1,11 @@
 // components/ui/SectionLabel.tsx
+// Intentionally renders nothing: each section's heading already names it, and the sidebar
+// shows where you are. Kept as a component so existing imports stay valid.
 interface SectionLabelProps {
   children: React.ReactNode;
   color?: string;
 }
 
-export default function SectionLabel({ children, color = '#06b6d4' }: SectionLabelProps) {
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        fontSize: '0.65rem',
-        fontWeight: 700,
-        letterSpacing: '0.18em',
-        textTransform: 'uppercase',
-        color,
-        marginBottom: '0.75rem',
-      }}
-    >
-      <span style={{ width: 20, height: 1, background: color, opacity: 0.5, display: 'inline-block' }} />
-      {children}
-    </span>
-  );
+export default function SectionLabel(_props: SectionLabelProps) {
+  return null;
 }

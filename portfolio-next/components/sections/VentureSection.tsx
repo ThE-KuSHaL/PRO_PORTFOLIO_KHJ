@@ -138,7 +138,7 @@ export default function VentureSection() {
                 borderRadius: 999,
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)',
-                color: 'rgba(255,255,255,0.5)',
+                color: 'rgba(255,255,255,0.7)',
               }}
             >
               {tag}
@@ -149,7 +149,7 @@ export default function VentureSection() {
         {/* Progress bar */}
         <div style={{ marginTop: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.64)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               Build progress
             </span>
             <span style={{ fontSize: '0.65rem', color: '#06b6d4', fontWeight: 600 }}>~85%</span>

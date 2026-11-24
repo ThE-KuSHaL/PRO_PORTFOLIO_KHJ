@@ -186,7 +186,7 @@ function NodeModal({
         </div>
 
         {/* Educational focus */}
-        <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em', marginBottom: 16 }}>
+        <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.64)', letterSpacing: '0.04em', marginBottom: 16 }}>
           {node.focus}
         </p>
 
@@ -200,7 +200,7 @@ function NodeModal({
             marginBottom: 20,
           }}
         >
-          <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', margin: 0, lineHeight: 1.5 }}>
+          <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)', fontStyle: 'italic', margin: 0, lineHeight: 1.5 }}>
             {node.note}
           </p>
         </div>
@@ -209,7 +209,7 @@ function NodeModal({
           {/* Growth areas & Tags */}
           <div>
             <div style={{ marginBottom: 20 }}>
-              <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
+              <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.64)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
                 Growth Areas
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -245,7 +245,7 @@ function NodeModal({
           {/* Semester accordion — only for B.E. */}
           {node.isBE && (
             <div>
-              <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
+              <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.64)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
                 Academic Modules
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -282,13 +282,13 @@ function NodeModal({
                             <div>
                               <p style={{ fontSize: '0.65rem', fontWeight: 800, color: '#06b6d4', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>Core Courses</p>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                {sem.courses.map((c) => <div key={c} style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>· {c}</div>)}
+                                {sem.courses.map((c) => <div key={c} style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.4 }}>· {c}</div>)}
                               </div>
                             </div>
                             <div>
                               <p style={{ fontSize: '0.65rem', fontWeight: 800, color: '#818cf8', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>Key Projects</p>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                {sem.projects.map((p) => <div key={p} style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4 }}>⚡ {p}</div>)}
+                                {sem.projects.map((p) => <div key={p} style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.4 }}>⚡ {p}</div>)}
                               </div>
                             </div>
                           </div>
@@ -407,8 +407,8 @@ export default function EducationSection() {
           <SectionLabel color="#6366f1">Education</SectionLabel>
           <h2
             style={{
-              fontSize: 'clamp(2.5rem, 6vw, 4.5rem)',
-              fontWeight: 800,
+              fontSize: 'clamp(1.75rem, 1.2rem + 2.2vw, 2.5rem)',
+              fontWeight: 600,
               marginBottom: '1rem',
               color: '#f0f4ff',
               textShadow: '0 4px 24px rgba(0,0,0,0.6)',
@@ -417,7 +417,7 @@ export default function EducationSection() {
           >
             The roots.
           </h2>
-          <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', maxWidth: 480, lineHeight: 1.6, textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.7)', maxWidth: '44ch', lineHeight: 1.6, textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
             Growing through logic. Energy pulses from roots to branch tips.
           </p>
         </div>

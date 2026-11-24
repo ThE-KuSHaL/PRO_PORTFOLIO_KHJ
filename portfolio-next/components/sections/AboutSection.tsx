@@ -31,17 +31,10 @@ export default function AboutSection() {
       className="max-md:pl-8 max-md:pr-8"
     >
       <SectionLabel>About</SectionLabel>
-      <h2
-        style={{
-          fontSize: 'clamp(1.8rem,3.5vw,2.8rem)',
-          fontWeight: 700,
-          marginBottom: '0.25rem',
-          color: '#f0f4ff',
-        }}
-      >
+      <h2 className="sec-title">
         The builder behind the code.
       </h2>
-      <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', marginBottom: '3rem' }}>
+      <p className="sec-sub">
         A little about me — and why I build.
       </p>
 

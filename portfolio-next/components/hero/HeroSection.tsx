@@ -62,54 +62,26 @@ export default function HeroSection() {
           <TypewriterRoles />
         </div>
 
-        {/* Stat chips */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginTop: '1rem', marginBottom: '1.5rem' }}>
-          {[
-            { label: '📍 VVCE, Mysuru', color: 'rgba(255,255,255,0.35)' },
-            { label: '⚡ QUIRK TECHNOLOGIES', color: 'rgba(6,182,212,0.7)' },
-            { label: '🛡️ Kavach — AI Fraud Detection', color: 'rgba(99,102,241,0.8)' },
-          ].map(chip => (
-            <span key={chip.label} className="hero-chip" style={{
-              fontWeight: 600,
-              color: chip.color,
-              borderRadius: 999,
-              border: `1px solid ${chip.color}55`,
-              background: `${chip.color}10`,
-              letterSpacing: '0.03em',
-            }}>
-              {chip.label}
-            </span>
-          ))}
-        </div>
+        {/* Context line */}
+        <ul className="hero-facts">
+          <li>VVCE, Mysuru</li>
+          <li>Quirk Technologies</li>
+          <li>Kavach — AI fraud detection</li>
+        </ul>
 
         {/* CTA buttons */}
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
           <a
             href="#projects"
             onClick={e => { e.preventDefault(); document.querySelector('#projects')?.scrollIntoView({ behavior: 'smooth' }); }}
-            className="hero-cta"
-            style={{
-              background: 'linear-gradient(135deg, #06b6d4, #6366f1)',
-              color: '#f0f4ff', fontWeight: 600,
-              borderRadius: 8, border: 'none', cursor: 'pointer',
-              textDecoration: 'none', letterSpacing: '0.03em',
-              boxShadow: '0 4px 20px rgba(6,182,212,0.3)',
-            }}
+            className="btn btn-primary"
           >
             See my work
           </a>
           <a
             href="#contact"
             onClick={e => { e.preventDefault(); document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' }); }}
-            className="hero-cta"
-            style={{
-              background: 'rgba(6,182,212,0.12)',
-              color: '#06b6d4', fontWeight: 600,
-              borderRadius: 8,
-              border: '1px solid rgba(6,182,212,0.4)',
-              cursor: 'pointer',
-              textDecoration: 'none', letterSpacing: '0.03em',
-            }}
+            className="btn btn-ghost"
           >
             Get in touch
           </a>

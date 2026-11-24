@@ -50,7 +50,7 @@ function SkillsLite({ onLoad3D }: { onLoad3D: () => void }) {
                 <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: c, boxShadow: `0 0 8px ${c}` }} />
                 {r.name}
               </span>
-              <span style={{ display: 'block', marginTop: 3, fontSize: '0.68rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.3 }}>{r.knowledge}</span>
+              <span style={{ display: 'block', marginTop: 3, fontSize: '0.68rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.3 }}>{r.knowledge}</span>
             </button>
           );
         })}
@@ -117,10 +117,10 @@ export default function SkillsSection() {
     >
       <div style={{ position: 'relative', zIndex: 10 }}>
         <SectionLabel color="#06b6d4">Skills</SectionLabel>
-        <h2 style={{ fontSize: 'clamp(1.8rem,3.5vw,2.8rem)', fontWeight: 700, marginBottom: '0.25rem', color: '#f0f4ff' }}>
+        <h2 className="sec-title">
           Developer Brain Matrix.
         </h2>
-        <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem', maxWidth: '600px' }}>
+        <p className="sec-sub">
           Explore my technical expertise through an interactive neural map. Tap regions to expand knowledge domains.
         </p>
       </div>

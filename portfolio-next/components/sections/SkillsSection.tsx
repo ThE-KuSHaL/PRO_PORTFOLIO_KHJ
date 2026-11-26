@@ -1,19 +1,17 @@
 'use client';
-// Skills: the 3D brain (three + r3f + postprocessing + 3.4 MB GLB) is lazy-loaded only when the
-// section nears the viewport on capable devices, and its render loop pauses when scrolled away.
-// Lite devices get a lightweight 2D skill map and may opt in to the 3D brain with a button.
+// Skills: the Engineer's Brain. Every device gets the 3D brain; the quality profile (inside it) decides
+// how heavy it is. The code and model load when the section nears the viewport, and rendering stops when
+// it is scrolled away. Browsers without WebGL 2 get a plain 2D skill map instead.
 
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import SectionLabel from '@/components/ui/SectionLabel';
 import { REGIONS } from '../cortex/state/regions';
-import { useLite } from '@/lib/device';
 
 const CortexApp = dynamic(() => import('../cortex/App').then((m) => m.CortexApp), {
   ssr: false,
   loading: () => (
     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(6,182,212,0.6)', fontSize: '0.8rem' }}>
-      Loading neural map…
+      Loading the brain…
     </div>
   ),
 });
@@ -21,8 +19,18 @@ const CortexApp = dynamic(() => import('../cortex/App').then((m) => m.CortexApp)
 // Mirrors cortex/config/palette.ts REGION_COLORS (kept local so the 3D bundle isn't pulled in).
 const REGION_HEX = ['#3EA8FF', '#2DFF88', '#FFB347', '#8C5BFF', '#57F7FF', '#FF6464', '#FFE45A'];
 
-/** Lightweight, WebGL-free version of the brain: tap a region to open its knowledge card. */
-function SkillsLite({ onLoad3D }: { onLoad3D: () => void }) {
+function hasWebGL2() {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    gl?.getExtension('WEBGL_lose_context')?.loseContext(); // a probe only: free the context at once
+    return !!gl;
+  } catch {
+    return false;
+  }
+}
+
+/** WebGL-free version of the brain: tap a region to open its knowledge card. */
+function SkillsFlat() {
   const [open, setOpen] = useState<number>(0);
   const region = REGIONS[open];
   const color = REGION_HEX[open];
@@ -72,62 +80,46 @@ function SkillsLite({ onLoad3D }: { onLoad3D: () => void }) {
         </div>
       </div>
 
-      <button
-        onClick={onLoad3D}
-        style={{ marginTop: 14, padding: '10px 16px', fontSize: '0.78rem', fontWeight: 600, color: '#06b6d4', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.4)', borderRadius: 8, cursor: 'pointer' }}
-      >
-        View 3D brain instead (≈3.5 MB)
-      </button>
     </div>
   );
 }
 
 export default function SkillsSection() {
-  const lite = useLite();
-  const ref = useRef<HTMLDivElement>(null);
-  const [near, setNear] = useState(false);      // approached viewport → allow mount
-  const [visible, setVisible] = useState(false); // currently on screen → render loop on
-  const [forced, setForced] = useState(false);   // lite user opted in
+  const ref = useRef<HTMLElement>(null);
+  const [mode, setMode] = useState<'waiting' | '3d' | 'flat'>('waiting');
+  const [visible, setVisible] = useState(false); // on screen → the brain may render
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const nearIO = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setNear(true); nearIO.disconnect(); } }, { rootMargin: '600px' });
-    const visIO = new IntersectionObserver(([e]) => setVisible(e.isIntersecting));
+    const nearIO = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      setMode(hasWebGL2() ? '3d' : 'flat');
+      nearIO.disconnect();
+    }, { rootMargin: '600px' });
+    // -2px: a section that merely touches the screen edge counts as "intersecting", which left the brain
+    // rendering all the time the visitor spent on the next section.
+    const visIO = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { rootMargin: '-2px 0px' });
     nearIO.observe(el); visIO.observe(el);
     return () => { nearIO.disconnect(); visIO.disconnect(); };
   }, []);
 
-  const show3D = lite === false ? near : forced;
-
   return (
     <section
       id="skills"
-      className="relative w-full overflow-hidden pointer-events-auto flex flex-col"
+      ref={ref}
+      className="skills-section pointer-events-auto"
       aria-label="Skills & Expertise"
-      style={{
-        padding: 'clamp(4rem,8vh,7rem) clamp(1.5rem,5vw,4rem)',
-        paddingLeft: 'calc(var(--sidebar-width, 200px) + clamp(1.5rem,4vw,4rem))',
-        transition: 'padding-left 0.3s cubic-bezier(0.4,0,0.2,1)',
-        minHeight: '100svh',
-        position: 'relative',
-        zIndex: 2,
-        contain: 'paint',
-      }}
     >
-      <div style={{ position: 'relative', zIndex: 10 }}>
-        <SectionLabel color="#06b6d4">Skills</SectionLabel>
-        <h2 className="sec-title">
-          Developer Brain Matrix.
-        </h2>
-        <p className="sec-sub">
-          Explore my technical expertise through an interactive neural map. Tap regions to expand knowledge domains.
-        </p>
-      </div>
-
-      <div ref={ref} className="relative w-full flex-1 min-h-[600px] overflow-visible z-0">
-        {show3D ? <CortexApp active={visible} /> : lite === true ? <SkillsLite onLoad3D={() => setForced(true)} /> : null}
-      </div>
+      {mode === 'flat' ? (
+        <div className="skills-flat">
+          <h2 className="sec-title">Engineer&apos;s Brain</h2>
+          <SkillsFlat />
+        </div>
+      ) : (
+        // the brain carries the section's one heading
+        <div className="skills-exhibit">{mode === '3d' && <CortexApp active={visible} />}</div>
+      )}
     </section>
   );
 }

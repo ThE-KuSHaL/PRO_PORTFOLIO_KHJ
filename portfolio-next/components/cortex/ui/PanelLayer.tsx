@@ -65,7 +65,7 @@ export function PanelLayer() {
         if (!panel || !path || !node) continue
 
         // If completely closed, hide from DOM completely
-        if (state.phase <= 0.0 || !sp || !sp.visible) {
+        if (state.phase <= 0.0 || !sp) {
           panel.style.display = 'none'
           path.style.display = 'none'
           node.style.display = 'none'
@@ -87,8 +87,9 @@ export function PanelLayer() {
         cardProgress = 1 - Math.pow(1 - cardProgress, 3)
 
         panel.style.display = ''
-        path.style.display = ''
-        node.style.display = ''
+        // A lobe on the far side keeps its card; only the line and dot that point at it are hidden.
+        path.style.display = sp.visible ? '' : 'none'
+        node.style.display = sp.visible ? '' : 'none'
 
         // 1. Position tracking
         const w = panel.offsetWidth
@@ -166,7 +167,9 @@ export function PanelLayer() {
         node.setAttribute('cy', String(sp.y))
       }
 
-      raf = requestAnimationFrame(loop)
+      // Rest once nothing is open or closing: this effect restarts when the selection changes.
+      const idle = selectedRef.current.length === 0 && [...cardState.current.values()].every((c) => c.phase <= 0)
+      if (!idle) raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)

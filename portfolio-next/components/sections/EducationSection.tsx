@@ -1,20 +1,19 @@
 'use client';
 // components/sections/EducationSection.tsx
-// SVG-based interactive education growth tree — "The Roots"
-// Circuitry-inspired trunk with three milestone nodes.
-// Hover illumination, contextual cards near nodes, enriched content.
-// Responsive: desktop horizontal layout, mobile stacked.
+// "The Roots": schooling is the roots, PUC is the trunk, engineering is the great branch
+// that bears the Engineer's Brain. The scene lives in RootsScene; this file owns the story data.
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import SectionLabel from '../ui/SectionLabel';
 import { semesterData } from '@/lib/data';
 import { useGpuTier, useIsMobile } from '@/lib/device';
+import ROOTS_META from '@/lib/roots-meta.json';
 
-// three.js stays out of the main bundle; only fetched on capable devices near the viewport.
-const EducationTree3D = dynamic(() => import('./EducationTree3D'), { ssr: false });
+// three.js stays out of the main bundle; only fetched when the section nears the viewport.
+const RootsScene = dynamic(() => import('./RootsScene'), { ssr: false });
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -78,8 +77,6 @@ const NODES: NodeData[] = [
   },
 ];
 
-// ─── SVG Sub-components ──────────────────────────────────────────────────────
-// Replaced by high-fidelity Three.js EducationTree3D component.
 
 
 // ─── Contextual Card ─────────────────────────────────────────────────────────
@@ -120,12 +117,14 @@ function NodeModal({
         style={{
           width: '100%',
           maxWidth: 700,
+          maxHeight: '100%',
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
           background: 'rgba(3,7,18,0.95)',
           padding: '2rem',
           borderRadius: 16,
           border: `1px solid ${node.isBE ? 'rgba(6,182,212,0.2)' : 'rgba(99,102,241,0.2)'}`,
           boxShadow: '0 32px 64px rgba(0,0,0,0.8)',
-          overflow: 'hidden',
           position: 'relative',
         }}
       >
@@ -301,6 +300,21 @@ function NodeModal({
             </div>
           )}
         </div>
+
+        {/* The fruit leads on to the next district of the city */}
+        {node.isBE && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ marginTop: '1.5rem' }}
+            onClick={() => {
+              onClose();
+              document.getElementById('skills')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+          >
+            Enter the Engineer&apos;s Brain
+          </button>
+        )}
       </motion.div>
     </div>
   );
@@ -311,9 +325,16 @@ function NodeModal({
 export default function EducationSection() {
   const ref = useRef<HTMLElement>(null);
   const nearView = useInView(ref, { once: true, margin: '400px' });
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const storyRef = useRef<HTMLUListElement>(null);
+  // Written straight to the one line concerned, and only on change: no React render, and no
+  // page-wide style rule watching the tree (that cost slow processors a quarter of their frame rate).
+  const lightLine = useCallback((part: string, lit: boolean) => {
+    storyRef.current?.querySelector(`[data-part="${part}"]`)?.toggleAttribute('data-lit', lit);
+  }, []);
+  const titleSeen = useInView(titleRef, { once: true, amount: 0.9 }); // the title card switches on once
   const tier = useGpuTier();
   const [activeNode, setActiveNode] = useState<NodeId | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<NodeId | null>(null);
   const isMobile = useIsMobile();
 
   const activeData = activeNode ? NODES.find((n) => n.id === activeNode) ?? null : null;
@@ -331,130 +352,49 @@ export default function EducationSection() {
         position: 'relative',
         width: '100%',
         overflow: 'hidden',
-        background: '#020617',
-        padding: isMobile
-          ? '3.5rem 1.25rem 3rem'
-          : 'clamp(4rem,8vh,7rem) clamp(1.5rem,5vw,4rem)',
-        paddingLeft: isMobile ? '1.25rem' : 'calc(var(--sidebar-width, 200px) + clamp(1.5rem,4vw,4rem))',
-        transition: 'padding-left 0.3s cubic-bezier(0.4,0,0.2,1)',
+        // No opaque fill: the PCB city animation behind the page shows through the tree's sky.
+        background: 'transparent',
+        height: isMobile ? undefined : 'max(100svh, 34rem)',
+        padding: isMobile ? '3.5rem 0 2rem' : 0,
       }}
     >
-      {/* ── Atmospheric layers ── */}
+      {/* Soft navy scrim: keeps the headline readable without hiding the circuitry */}
+      <div aria-hidden="true" className="roots-scrim" />
 
-      {/* Radial vignette — cinematic depth falloff */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'radial-gradient(ellipse 70% 65% at 35% 40%, transparent 0%, rgba(2,6,23,0.5) 65%, rgba(2,6,23,0.85) 100%)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      {/* Top gradient — atmospheric darkening */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '15%',
-          background: 'linear-gradient(to bottom, rgba(2,6,23,0.7), transparent)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      {/* Bottom gradient — ground fade */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: '12%',
-          background: 'linear-gradient(to top, rgba(2,6,23,0.6), transparent)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      {/* ── Atmosphere (pure CSS — the 3D tree is the scene now) ── */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute', inset: 0, zIndex: 0,
-          background:
-            'radial-gradient(ellipse 60% 55% at 68% 62%, rgba(34,211,238,0.10) 0%, transparent 70%), radial-gradient(ellipse 50% 45% at 30% 20%, rgba(99,102,241,0.12) 0%, transparent 70%), linear-gradient(180deg, #030814 0%, #050b1c 55%, #020617 100%)',
-        }}
-      />
-
-      {/* ── Foreground Text Content ── */}
-      <div style={{ pointerEvents: 'none', position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: isMobile ? undefined : '800px', paddingBottom: isMobile ? '1.5rem' : '4rem' }}>
-
-        {/* Section header */}
-        <div style={{ pointerEvents: 'auto', marginTop: 'auto', marginBottom: 'auto', paddingLeft: isMobile ? 0 : '2rem' }}>
-          <SectionLabel color="#6366f1">Education</SectionLabel>
-          <h2
-            style={{
-              fontSize: 'clamp(1.75rem, 1.2rem + 2.2vw, 2.5rem)',
-              fontWeight: 600,
-              marginBottom: '1rem',
-              color: '#f0f4ff',
-              textShadow: '0 4px 24px rgba(0,0,0,0.6)',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            The roots.
-          </h2>
-          <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.7)', maxWidth: '44ch', lineHeight: 1.6, textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-            Growing through logic. Energy pulses from roots to branch tips.
-          </p>
-        </div>
+      {/* the title card has the open sky to itself, clear of both the tree and the city */}
+      <div className="roots-head">
+        <SectionLabel color="#6366f1">Education</SectionLabel>
+        <h2 ref={titleRef} className="roots-title" data-on={titleSeen}>
+          <span>The </span>
+          <span>Roots</span>
+        </h2>
       </div>
 
-      {/* ── 3D tree: absolute backdrop on desktop, in-flow block on phones ── */}
-      {tier && tier !== 'none' && nearView && (
-        <div
-          style={
-            isMobile
-              ? { position: 'relative', zIndex: 2, height: 'min(460px, 62vh)', marginTop: '0.5rem' }
-              : { position: 'absolute', inset: 0, zIndex: 2 }
-          }
-        >
-          <EducationTree3D
-            activeNode={activeNode}
-            hoveredNode={hoveredNode}
-            onNodeClick={handleNodeClick}
-            onNodeHover={setHoveredNode}
-            nodesData={NODES.map(n => ({ id: n.id, year: n.year, label: n.label, isBE: n.isBE }))}
+      <div className="roots-copy">
+        {/* each line lights up in step with its part of the tree (see globals.css) */}
+        <ul ref={storyRef} className="roots-story">
+          <li data-part="roots">School laid the <b>roots</b>.</li>
+          <li data-part="trunk">PUC raised the <b>trunk</b>.</li>
+          <li data-part="branch">Engineering grew the branch that carries my <b>Engineer&apos;s Brain</b>.</li>
+        </ul>
+        <p className="roots-hint">
+          <span className="mouse">Point at the roots, the trunk or the fruit.</span>
+          <span className="touch">Tap the roots, the trunk or the fruit.</span>
+        </p>
+      </div>
+
+      {/* The scene: full-bleed backdrop on desktop, in-flow block on phones */}
+      <div className="roots-stage" style={isMobile ? { minHeight: `calc(100vw / ${ROOTS_META.tall.aspect})` } : undefined}>
+        {tier && nearView && (
+          <RootsScene
             tier={tier}
             mobile={isMobile}
+            nodes={NODES.map((n) => ({ id: n.id, year: n.year, label: n.label }))}
+            onSelect={handleNodeClick}
+            onLit={lightLine}
           />
-        </div>
-      )}
-      {tier === 'none' && (
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', gap: 10, padding: 0, maxWidth: 420 }}>
-          {NODES.map((n) => (
-            <button
-              key={n.id}
-              onClick={() => handleNodeClick(n.id)}
-              style={{
-                textAlign: 'left', padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
-                color: '#f0f4ff', background: 'rgba(8,12,28,0.88)',
-                border: `1px solid ${n.isBE ? 'rgba(6,182,212,0.5)' : 'rgba(129,140,248,0.4)'}`,
-              }}
-            >
-              <span style={{ display: 'block', fontSize: '0.68rem', color: n.isBE ? '#06b6d4' : '#818cf8', fontWeight: 700 }}>{n.year}</span>
-              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{n.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── Centered Cinematic Modal Overlay ── */}
       <AnimatePresence mode="wait">

@@ -1,7 +1,4 @@
 import { Environment, Lightformer } from '@react-three/drei'
-import { QUALITY, detectTier } from '../config/quality'
-
-const ENV_RESOLUTION = QUALITY[detectTier()].envResolution
 
 /**
  * Cinematic rig (docs/08_lighting_pipeline.md): darkness is default, light reveals form.
@@ -9,7 +6,7 @@ const ENV_RESOLUTION = QUALITY[detectTier()].envResolution
  * environment (built from Lightformers — no network fetch) that supplies the subtle
  * reflections metals need without ever being visible.
  */
-export function Lighting() {
+export function Lighting({ envResolution, shadows }: { envResolution: number; shadows: boolean }) {
   return (
     <>
       <ambientLight intensity={0.12} color="#abc4e0" />
@@ -20,7 +17,7 @@ export function Lighting() {
         position={[4.5, 6, 3.5]}
         intensity={2.4}
         color="#eaf2ff"
-        castShadow
+        castShadow={shadows}
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-bias={-0.0004}
@@ -41,7 +38,7 @@ export function Lighting() {
       {/* Warm soft fill from below to ground the contact shadows */}
       <directionalLight position={[2, -4, 2]} intensity={0.35} color="#ffc48c" />
 
-      <Environment resolution={ENV_RESOLUTION} background={false}>
+      <Environment resolution={envResolution} background={false}>
         <Lightformer form="rect" intensity={2.2} color="#bcd4ff" position={[0, 4, 3]} scale={[9, 6, 1]} />
         <Lightformer
           form="rect"

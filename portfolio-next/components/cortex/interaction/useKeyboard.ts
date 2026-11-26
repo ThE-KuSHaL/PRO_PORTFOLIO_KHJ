@@ -3,8 +3,9 @@ import { useCortex } from '../state/cortexStore'
 import { REGION_COUNT } from '../state/regions'
 
 /**
- * Keyboard parity (docs/01.5 accessibility): arrows move the hovered region,
- * Enter activates/deactivates it, Escape clears the current selection.
+ * Keyboard parity (docs/01.5 accessibility): while a region is hovered, arrows move to the next one and
+ * Enter activates/deactivates it; Escape clears the current selection. With nothing hovered the arrows
+ * belong to the page (keyboard users reach every region through the Tab navigator).
  */
 export function useKeyboard() {
   useEffect(() => {
@@ -30,7 +31,7 @@ export function useKeyboard() {
           break
         case 'ArrowRight':
         case 'ArrowDown': {
-          if (inControl) break
+          if (inControl || s.hovered == null) break
           const next = ((s.hovered ?? -1) + 1 + REGION_COUNT) % REGION_COUNT
           s.setHovered(next)
           e.preventDefault()
@@ -38,7 +39,7 @@ export function useKeyboard() {
         }
         case 'ArrowLeft':
         case 'ArrowUp': {
-          if (inControl) break
+          if (inControl || s.hovered == null) break
           const prev = ((s.hovered ?? REGION_COUNT) - 1 + REGION_COUNT) % REGION_COUNT
           s.setHovered(prev)
           e.preventDefault()

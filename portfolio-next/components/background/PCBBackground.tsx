@@ -1,135 +1,40 @@
 'use client';
 // components/background/PCBBackground.tsx
 // Ambient PCB background.
-//  • Lite devices (phones, low RAM, data-saver): one static dimmed poster — no canvas, no JS loop.
-//  • Full devices: a 75-frame 960×540 WebP ping-pong loop (≈2.8 MB, ≈155 MB decoded) drawn on a
-//    reduced-resolution canvas, started only after the page is idle, paused while the tab is
-//    hidden, and auto-disabled if the device can't draw it cheaply.
+//  • Lite devices (phones, low RAM, data-saver): one static dimmed poster.
+//  • Full devices: a 70 s forward-and-back video of the circuit board (AV1 about 470 KB, H.264 about 1 MB),
+//    decoded by the video hardware, fetched only after the page is idle. It replaced 75 stills (2.7 MB,
+//    about 155 MB decoded) that JavaScript redrew on a canvas. Made by tools/background/make_pcb_video.py.
 
 import { useEffect, useRef } from 'react';
 import { useLite } from '@/lib/device';
 
-const TOTAL_FRAMES = 75;
-const TARGET_FPS = 22;
-const CYCLE_DURATION = 70;   // seconds for one forward+reverse breath
-const EASE_BLEND = 0.15;     // 0 = linear triangle wave, 1 = full cosine
-const SCALE_FACTOR = 1.08;   // crop watermark edges
+const SCALE_FACTOR = 1.08;   // crop the frame edges
 const SHIFT_X = 0.04;        // keep brightest traces off the portrait
-const MAX_CANVAS_W = 960;    // canvas internal width cap (CSS stretches it)
-const BAIL_MS_PER_DRAW = 8;  // average draw cost above this → stop animating
-
-const THETA_SPEED = (2 * Math.PI) / CYCLE_DURATION;
-const frameSrc = (i: number) => `/bg/f${String(i).padStart(3, '0')}.webp`;
-
-function framePosition(theta: number, count: number): number {
-  const t = ((theta / (2 * Math.PI)) % 1 + 1) % 1;
-  const linear = t < 0.5 ? t * 2 : (1 - t) * 2;
-  const cosine = (1 - Math.cos(theta)) / 2;
-  return (linear * (1 - EASE_BLEND) + cosine * EASE_BLEND) * (count - 1);
-}
+const FRAMING = `translateX(-${SHIFT_X * 100}%) scale(${SCALE_FACTOR})`;
 
 export default function PCBBackground() {
   const lite = useLite();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (lite !== false) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d', { alpha: false });
-    if (!canvas || !ctx) return;
-
-    let frames: HTMLImageElement[] = [];
+    const video = videoRef.current;
+    if (!video) return;
     let cancelled = false;
-    let stopped = false;
-    let raf = 0;
-    let theta = 0;
-    let last = 0;
-    let drawn = 0;
-    let cost = 0;
-    const interval = 1000 / TARGET_FPS;
 
-    const draw = () => {
-      if (!frames.length) return;
-      const pos = framePosition(theta, frames.length);
-      const a = Math.floor(pos);
-      const b = Math.min(a + 1, frames.length - 1);
-      const blend = pos - a;
-      const img = frames[a];
-      if (!img) return;
-
-      const cw = canvas.width, ch = canvas.height;
-      const aspect = img.naturalWidth / img.naturalHeight;
-      let w = cw, h = cw / aspect;
-      if (cw / ch < aspect) { h = ch; w = ch * aspect; }
-      w *= SCALE_FACTOR; h *= SCALE_FACTOR;
-      const dx = (cw - w) / 2 - cw * SHIFT_X;
-      const dy = (ch - h) / 2;
-
-      ctx.globalAlpha = 1;
-      ctx.drawImage(img, dx, dy, w, h);
-      if (blend > 0.01 && frames[b]) {
-        ctx.globalAlpha = blend;
-        ctx.drawImage(frames[b], dx, dy, w, h);
-        ctx.globalAlpha = 1;
-      }
-    };
-
-    const resize = () => {
-      const w = window.innerWidth, h = window.innerHeight;
-      const s = Math.min(1, MAX_CANVAS_W / w);
-      canvas.width = Math.round(w * s);
-      canvas.height = Math.round(h * s);
-      draw();
-    };
-
-    const tick = (ts: number) => {
-      raf = requestAnimationFrame(tick);
-      const elapsed = ts - last;
-      if (elapsed < interval) return;
-      last = ts - (elapsed % interval);
-      theta = (theta + (Math.min(elapsed, 100) / 1000) * THETA_SPEED) % (2 * Math.PI);
-
-      const t0 = performance.now();
-      draw();
-      cost += performance.now() - t0;
-      if (++drawn === 40 && cost / drawn > BAIL_MS_PER_DRAW) {
-        stopped = true;                 // too slow: freeze on the current frame
-        cancelAnimationFrame(raf);
-      }
-    };
-
-    const onVisibility = () => {
-      cancelAnimationFrame(raf);
-      if (!document.hidden && frames.length && !stopped && !cancelled) {
-        last = performance.now();
-        raf = requestAnimationFrame(tick);
-      }
-    };
-
+    const show = () => { video.style.opacity = '1'; };
+    // A hidden tab pauses; play() is refused in some power-saving modes, and then the poster simply stays.
+    const play = () => { if (!cancelled && !document.hidden) video.play().catch(() => {}); };
+    const onVisibility = () => { if (document.hidden) video.pause(); else play(); };
     const load = () => {
       if (cancelled) return;
-      const imgs: (HTMLImageElement | undefined)[] = new Array(TOTAL_FRAMES);
-      let done = 0;
-      const finish = () => {
-        if (cancelled) return;
-        frames = imgs.filter((i): i is HTMLImageElement => !!i);
-        if (frames.length < 2) return;
-        resize();
-        canvas.style.opacity = '1';
-        last = performance.now();
-        if (!document.hidden) raf = requestAnimationFrame(tick);
-      };
-      for (let i = 0; i < TOTAL_FRAMES; i++) {
-        const img = new Image();
-        img.decoding = 'async';
-        img.onload = () => { imgs[i] = img; if (++done === TOTAL_FRAMES) finish(); };
-        img.onerror = () => { if (++done === TOTAL_FRAMES) finish(); };
-        img.src = frameSrc(i);
-      }
+      video.muted = true;
+      video.preload = 'auto';
+      video.load();
+      play();
     };
-
-    resize();
-    window.addEventListener('resize', resize, { passive: true });
+    video.addEventListener('playing', show);
     document.addEventListener('visibilitychange', onVisibility);
 
     // Start only once the page is idle so the hero paints first.
@@ -142,11 +47,10 @@ export default function PCBBackground() {
 
     return () => {
       cancelled = true;
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', resize);
+      video.pause();
+      video.removeEventListener('playing', show);
       window.removeEventListener('load', kick);
       document.removeEventListener('visibilitychange', onVisibility);
-      frames = [];
     };
   }, [lite]);
 
@@ -164,18 +68,27 @@ export default function PCBBackground() {
         fetchPriority="low"
         style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%',
-          objectFit: 'cover', transform: `translateX(-${SHIFT_X * 100}%) scale(${SCALE_FACTOR})`,
+          objectFit: 'cover', transform: FRAMING,
         }}
       />
 
       {lite === false && (
-        <canvas
-          ref={canvasRef}
+        <video
+          ref={videoRef}
+          muted
+          loop
+          playsInline
+          preload="none"
+          disablePictureInPicture
+          tabIndex={-1}
           style={{
-            position: 'absolute', inset: 0, width: '100%', height: '100%',
-            display: 'block', opacity: 0, transition: 'opacity 0.8s ease',
+            position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+            transform: FRAMING, opacity: 0, transition: 'opacity 0.8s ease',
           }}
-        />
+        >
+          <source src="/bg/pcb-v1.webm" type='video/webm; codecs="av01.0.04M.08"' />
+          <source src="/bg/pcb-v1.mp4" type="video/mp4" />
+        </video>
       )}
 
       {/* Dim (replaces CSS brightness/blur filter, which is costly on a full-screen layer) */}

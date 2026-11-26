@@ -11,9 +11,10 @@ import { HoverLabel } from '../scene/HoverLabel'
 import { useCortex } from '../state/cortexStore'
 import { useQuality } from '../state/qualityStore'
 import { REGION_COUNT } from '../state/regions'
+import type { QualitySettings } from '../config/quality'
 
-const MODEL_URL = '/models/Brain_port.glb'
-useGLTF.preload(MODEL_URL)
+/** Shader clock used by the still profile: a moment with the signal packets spread nicely. */
+const STILL_TIME = 2.6
 
 const DRAG_THRESHOLD_SQ = 36 // px^2 — beyond this a pointer-up is an orbit drag, not a click
 
@@ -36,20 +37,18 @@ function regionFromEvent(e: ThreeEvent<PointerEvent>): number | null {
  * per-region activation/hover uniforms toward the discrete store state — so hovering
  * or selecting never causes a per-frame React re-render.
  */
-export function BrainMesh() {
-  const { scene } = useGLTF(MODEL_URL)
+export function BrainMesh({ quality }: { quality: QualitySettings }) {
+  const { animate } = quality
+  const { scene } = useGLTF(quality.model, '/draco/') // compressed; the decoder is served by this site
   const processed = useMemo(() => {
     const p = processBrainScene(scene)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(p.geometry as any).computeBoundsTree?.()
     return p
   }, [scene])
-  const { material, uniforms } = useMemo(() => createBrainMaterial(), [])
-  // Real surface hardware rewards zoom; skipped on the lowest tier (level 2 = Tier C).
-  // Tier A (level 0) gets the full ~16k-part fabrication, Tier B (level 1) ~45%.
-  const componentLevel = useQuality((s) => s.level)
-  const showComponents = componentLevel < 2
-  const componentBudget = componentLevel === 0 ? 1 : 0.45
+  const { material, uniforms } = useMemo(() => createBrainMaterial(quality.clearcoat), [quality.clearcoat])
+  // Small surface-mounted parts reward zoom: all of them on Full, fewer on Balanced, none on Lite.
+  const componentBudget = useQuality((s) => s.componentBudget)
 
   const groupRef = useRef<Group>(null)
   const activeEase = useRef(new Float32Array(REGION_COUNT))
@@ -72,6 +71,7 @@ export function BrainMesh() {
     return () => {
       brainRuntime.ready = false
       brainRuntime.group = null
+      useCortex.getState().setReady(false) // so the loader shows while another profile builds
       material.dispose()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(processed.geometry as any).disposeBoundsTree?.()
@@ -81,13 +81,13 @@ export function BrainMesh() {
 
   useFrame((state, delta) => {
     const dt = Math.min(delta, 0.1)
-    const t = state.clock.elapsedTime
+    const t = animate ? state.clock.elapsedTime : STILL_TIME
     uniforms.uTime.value = t
 
     // Idle breathing: a calm, alive rest state — slow vertical drift, a slower rotation,
     // and a gentle scale breath on its own frequency so the motion never reads as a loop.
     // All three respect prefers-reduced-motion consistently.
-    const motion = reducedMotion ? 0 : 1
+    const motion = reducedMotion || !animate ? 0 : 1
     const g = groupRef.current
     if (g) {
       g.position.y = Math.sin(t * 0.5) * 0.03 * motion
@@ -108,8 +108,9 @@ export function BrainMesh() {
     // BOOST CLOCK: while hovered/selected the region's clock advances faster, so packets
     // stay quick for the entire interaction (no burst-then-fade), easing back only on exit.
     const s = useCortex.getState()
-    const kHover = 1 - Math.pow(0.004, dt) // confident ease (~0.15s), holds while inside
-    const kSelect = 1 - Math.pow(0.02, dt) // deliberate deploy: ~0.28s
+    // The still profile has no in-between frames, so states switch at once.
+    const kHover = animate ? 1 - Math.pow(0.004, dt) : 1 // confident ease (~0.15s), holds while inside
+    const kSelect = animate ? 1 - Math.pow(0.02, dt) : 1 // deliberate deploy: ~0.28s
     const boost = uniforms.uBoost.value
     let target = 0
     for (let i = 0; i < REGION_COUNT; i++) {
@@ -128,7 +129,7 @@ export function BrainMesh() {
 
     // Synchronization crescendo: swells when all seven regions are active (~1.5s ease).
     const syncTarget = target >= REGION_COUNT ? 1 : 0
-    const ks = 1 - Math.pow(0.02, dt)
+    const ks = animate ? 1 - Math.pow(0.02, dt) : 1
     uniforms.uSync.value += (syncTarget - uniforms.uSync.value) * ks
     uniforms.uMicroDetail.value = useQuality.getState().microDetail ? 1 : 0
   })
@@ -144,19 +145,24 @@ export function BrainMesh() {
     document.body.style.cursor = 'auto'
   }
   const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
-    down.current = { x: e.clientX, y: e.clientY, region: regionFromEvent(e) ?? -1 }
+    // The ray passes through the whole brain. Stop at the first (front) surface, or the far side wins.
+    e.stopPropagation()
+    down.current ={ x: e.clientX, y: e.clientY, region: regionFromEvent(e) ?? -1 }
   }
   const onPointerUp = (e: ThreeEvent<PointerEvent>) => {
     const dx = e.clientX - down.current.x
     const dy = e.clientY - down.current.y
     if (dx * dx + dy * dy > DRAG_THRESHOLD_SQ) return // was an orbit drag
-    
-    // Hover state is the absolute source of truth per interaction requirements
-    const r = useCortex.getState().hovered
+
+    // A mouse selects what it is hovering. A finger or pen never hovers (a tap sends no pointermove),
+    // so it selects the region that was under it.
+    const touch = e.pointerType !== 'mouse'
+    const r = touch ? (down.current.region >= 0 ? down.current.region : regionFromEvent(e)) : useCortex.getState().hovered
     if (r != null) {
       e.stopPropagation()
       useCortex.getState().toggleSelected(r)
     }
+    if (touch) useCortex.getState().setHovered(null) // nothing stays "hovered" once the finger lifts
   }
 
   return (
@@ -164,15 +170,15 @@ export function BrainMesh() {
       <mesh
         geometry={processed.geometry}
         material={material}
-        castShadow
-        receiveShadow
+        castShadow={quality.shadows}
+        receiveShadow={quality.shadows}
         frustumCulled={false}
         onPointerMove={onPointerMove}
         onPointerOut={onPointerOut}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
       />
-      {showComponents && <SurfaceComponents geometry={processed.geometry} budget={componentBudget} />}
+      {componentBudget > 0 && <SurfaceComponents geometry={processed.geometry} budget={componentBudget} />}
       <HoverLabel />
     </group>
   )

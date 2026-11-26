@@ -1,6 +1,6 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from 'next';
-import { IBM_Plex_Sans } from 'next/font/google';
+import { IBM_Plex_Sans, Bungee, Chakra_Petch } from 'next/font/google';
 import './globals.css';
 import { LITE_SCRIPT } from '@/lib/device';
 
@@ -10,6 +10,11 @@ const plex = IBM_Plex_Sans({
   variable: '--font-plex',
   display: 'swap',
 });
+
+// Section titles: engineering lettering whose clipped corners echo circuit-board routing. The story keywords
+// keep Bungee. Neither is preloaded, so they never compete with the first screen.
+const titleFace = Chakra_Petch({ subsets: ['latin'], weight: '700', variable: '--font-title', display: 'swap', preload: false });
+const rootsWord = Bungee({ subsets: ['latin'], weight: '400', variable: '--font-roots-word', display: 'swap', preload: false });
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -44,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={plex.variable} suppressHydrationWarning>
+    <html lang="en" className={`${plex.variable} ${titleFace.variable} ${rootsWord.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: LITE_SCRIPT }} />
       </head>

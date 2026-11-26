@@ -18,7 +18,7 @@ import { baseCameraDistance } from '../config/quality'
  * angle is clamped to the OrbitControls limits, and any user orbit input cancels the
  * flight immediately — the user is always in charge.
  */
-export function CameraRig() {
+export function CameraRig({ animate }: { animate: boolean }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const controls = useThree((s) => s.controls) as any
   const camera = useThree((s) => s.camera)
@@ -28,6 +28,7 @@ export function CameraRig() {
   
   const lastIdleDir = useRef<Vector3 | null>(null)
   const lastIdleDist = useRef<number | null>(null)
+  const slide = useRef<number | null>(null) // sideways viewport offset, as a share of the width
 
   // Any user orbit gesture cancels an in-flight focus — the user is always in charge.
   useEffect(() => {
@@ -50,7 +51,13 @@ export function CameraRig() {
     // Shift the vanishing point to the right, which visually moves the brain to the left.
     // Reduced from 10% to 5% to move the exhibit slightly back to the right, freeing up space.
     const { width, height } = _.size
-    camera.setViewOffset(width, height, width * 0.05, 0, width, height)
+    // Wide screens: the brain sits right of centre, clear of the heading, and slides left while a skill
+    // card is open on the right. A phone keeps it centred. A negative viewport offset moves it right.
+    // On wide screens a small downward offset lifts the exhibit clear of the controls along the bottom.
+    const want = width > height ? (s.selected.length ? 0.045 : -0.085) : 0
+    slide.current = slide.current === null || !animate ? want : slide.current + (want - slide.current) * (1 - Math.pow(0.02, Math.min(dt, 0.1)))
+    // On upright screens it sits a touch lower instead, clear of the heading and its instruction.
+    camera.setViewOffset(width, height, width * slide.current, height * (width > height ? 0.035 : -0.012), width, height)
 
     let isFlying = false
     const currentDir = camera.position.clone().sub(controls.target).normalize()
@@ -95,16 +102,17 @@ export function CameraRig() {
       
       // Softer, more cinematic settle
       const k = 1 - Math.pow(0.1, Math.min(dt, 0.1))
-      controls.target.lerp(desired, k * 0.5)
+      // The still profile jumps straight to the view: one new picture instead of a flight.
+      controls.target.lerp(desired, animate ? k * 0.5 : 1)
 
       // Spherically interpolate the camera's direction around the target
       q.setFromUnitVectors(currentDir, targetDir)
-      slerpedQ.identity().slerp(q, 0.05)
+      slerpedQ.identity().slerp(q, animate ? 0.05 : 1)
       currentDir.applyQuaternion(slerpedQ).normalize()
       
       // Lerp the distance
       const kf = 1 - Math.pow(0.008, Math.min(dt, 0.1))
-      const newDist = currentDist + (targetDist - currentDist) * kf
+      const newDist = currentDist + (targetDist - currentDist) * (animate ? kf : 1)
       
       // Apply the new position
       camera.position.copy(controls.target).addScaledVector(currentDir, newDist)

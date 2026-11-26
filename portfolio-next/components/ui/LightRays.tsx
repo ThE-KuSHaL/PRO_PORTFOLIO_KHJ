@@ -26,6 +26,9 @@ interface Ray {
   length: number;
 }
 
+const SCALE = 0.25;        // internal resolution
+const FRAME_MS = 1000 / 20;
+
 export default function LightRays({
   rayCount = 12,
   color    = 'rgba(6,182,212,',
@@ -72,8 +75,8 @@ export default function LightRays({
     const resize = () => {
       const p = canvas.parentElement;
       if (!p) return;
-      canvas.width  = p.offsetWidth;
-      canvas.height = p.offsetHeight;
+      canvas.width  = Math.max(1, Math.round(p.offsetWidth * SCALE));
+      canvas.height = Math.max(1, Math.round(p.offsetHeight * SCALE));
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -95,9 +98,12 @@ export default function LightRays({
     }
 
     // ── Draw loop ──────────────────────────────────────────────────────────
+    // The rays breathe slowly, so 20 frames a second is plenty; the loop stops when the hero leaves the screen.
+    let onScreen = true;
     function draw(ts: number) {
-      if (!ctx || !canvas) return;
-      const dt = Math.min(ts - lastTsRef.current, 50);
+      if (!ctx || !canvas || !onScreen) { rafRef.current = null; return; }
+      if (ts - lastTsRef.current < FRAME_MS) { rafRef.current = requestAnimationFrame(draw); return; }
+      const dt = Math.min(ts - lastTsRef.current, 100);
       lastTsRef.current = ts;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -136,7 +142,7 @@ export default function LightRays({
         ctx.arc(cx, cy, diag * ray.length, ray.angle - ray.width / 2, ray.angle + ray.width / 2);
         ctx.closePath();
         ctx.fillStyle = grad;
-        ctx.filter = `blur(${blur}px)`;
+        ctx.filter = `blur(${blur * SCALE}px)`;
         ctx.fill();
         ctx.restore();
       }
@@ -144,11 +150,16 @@ export default function LightRays({
       rafRef.current = requestAnimationFrame(draw);
     }
 
+    const io = new IntersectionObserver(([e]) => {
+      onScreen = e.isIntersecting;
+      if (onScreen && rafRef.current === null) rafRef.current = requestAnimationFrame(draw);
+    }, { rootMargin: '-2px 0px' });
+    io.observe(canvas);
     lastTsRef.current = performance.now();
-    rafRef.current = requestAnimationFrame(draw);
 
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      io.disconnect();
       ro.disconnect();
       cleanupScroll?.();
     };

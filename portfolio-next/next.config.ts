@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
       { source: "/bg/:path*", headers: immutable },
       { source: "/img/:path*", headers: immutable },
       { source: "/models/:path*", headers: immutable },
+      { source: "/roots/:path*", headers: immutable },
     ];
   },
 };

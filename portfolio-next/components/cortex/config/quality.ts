@@ -1,47 +1,70 @@
 /**
- * Project Cortex — performance tiers.
+ * Project Cortex — the three quality profiles.
  *
- * Tier A (high-end desktop), B (laptop / integrated GPU), C (mobile).
- * Each tier scales cost (bloom, particles, pixel ratio, micro-detail) while
- * preserving brain + interaction + panel quality. A full adaptive downshift
- * ladder arrives in a later milestone; this establishes the contract.
+ * The same brain and the same seven regions in every profile; what changes is cost. Visitors can switch
+ * with the buttons at the bottom left of the section, and the first choice is made from the device.
+ * Model files come from tools/blender/export_brain_lod.py.
  */
 
-export type Tier = 'A' | 'B' | 'C'
+import { computeGpuTier, type GpuTier } from '@/lib/device'
+
+export type Profile = 'lite' | 'balanced' | 'full'
 
 export interface QualitySettings {
-  tier: Tier
+  profile: Profile
+  label: string
+  model: string
+  /** false = a still picture: static lighting, redrawn only when the visitor does something. */
+  animate: boolean
   maxPixelRatio: number
-  bloom: boolean
+  /** Post-processing (bloom, vignette, SMAA). Without it the renderer tone-maps by itself. */
+  effects: boolean
   bloomIntensity: number
-  particleCount: number
+  /** Multisample anti-aliasing inside the post-processing buffer (thin stand details shimmer without it). */
+  msaa: number
+  shadows: boolean
+  /** See-through stand material: it makes three.js draw the scene a second time every frame. */
+  glass: boolean
+  clearcoat: boolean
   microDetail: boolean
+  /** Share of the small surface-mounted parts ("cells") to place; 0 leaves them out. */
+  componentBudget: number
+  particleCount: number
   envResolution: number
 }
 
-export const QUALITY: Record<Tier, QualitySettings> = {
-  A: { tier: 'A', maxPixelRatio: 2, bloom: true, bloomIntensity: 0.85, particleCount: 380, microDetail: true, envResolution: 256 },
-  B: { tier: 'B', maxPixelRatio: 1.5, bloom: true, bloomIntensity: 0.7, particleCount: 200, microDetail: true, envResolution: 128 },
-  C: { tier: 'C', maxPixelRatio: 1, bloom: true, bloomIntensity: 0.55, particleCount: 90, microDetail: false, envResolution: 64 },
+export const PROFILES: Profile[] = ['lite', 'balanced', 'full']
+
+export const QUALITY: Record<Profile, QualitySettings> = {
+  lite: {
+    profile: 'lite', label: 'Lite', model: '/models/brain_lite.glb', animate: false, maxPixelRatio: 1.5,
+    effects: false, bloomIntensity: 0, msaa: 0, shadows: false, glass: false, clearcoat: false, microDetail: false,
+    componentBudget: 0, particleCount: 0, envResolution: 64,
+  },
+  balanced: {
+    profile: 'balanced', label: 'Balanced', model: '/models/brain_balanced.glb', animate: true, maxPixelRatio: 1.25,
+    effects: true, bloomIntensity: 0.65, msaa: 2, shadows: false, glass: false, clearcoat: true, microDetail: false,
+    componentBudget: 0.45, particleCount: 120, envResolution: 128,
+  },
+  full: {
+    profile: 'full', label: 'Full', model: '/models/brain_full.glb', animate: true, maxPixelRatio: 2,
+    effects: true, bloomIntensity: 0.85, msaa: 4, shadows: true, glass: true, clearcoat: true, microDetail: true,
+    componentBudget: 1, particleCount: 380, envResolution: 256,
+  },
 }
 
-/** Cheap heuristic tier probe. Refined with live FPS monitoring in a later milestone. */
-export function detectTier(): Tier {
-  if (typeof navigator === 'undefined') return 'A'
-  const ua = navigator.userAgent || ''
-  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua)
-  if (isMobile) return 'C'
-  const cores = (navigator as Navigator & { hardwareConcurrency?: number }).hardwareConcurrency ?? 8
-  const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8
-  if (cores <= 4 || mem <= 4) return 'B'
-  return 'A'
+/** Phones, touch screens, reduced motion and small machines start on Lite. */
+const BY_TIER: Record<GpuTier, Profile> = { none: 'lite', low: 'lite', mid: 'balanced', high: 'full' }
+
+export function recommendedProfile(): Profile {
+  return typeof window === 'undefined' ? 'full' : BY_TIER[computeGpuTier()]
 }
 
 /**
- * Orbit distance that keeps the whole brain inside the frame. Landscape keeps the original
- * 4.5; portrait (phones) pulls back so the brain's width fits instead of being cropped.
+ * Orbit distance that keeps the exhibit inside the frame. Landscape sits far enough back that the
+ * stand is not cut off; portrait (phones) pulls back so the brain's width fits instead of being cropped.
  */
 export function baseCameraDistance(aspect: number): number {
-  if (!isFinite(aspect) || aspect >= 1.2) return 4.5
+  if (!isFinite(aspect) || aspect >= 1.2) return 4.95
   return Math.min(7.4, 4.5 * Math.max(1, 1.2 / Math.max(aspect, 0.45)) * 0.8)
 }

@@ -1,34 +1,39 @@
 import { Canvas } from '@react-three/fiber'
-import { NoToneMapping, PCFShadowMap } from 'three'
+import { ACESFilmicToneMapping, NoToneMapping, PCFShadowMap } from 'three'
+import { lazy, Suspense } from 'react'
 import { Stage } from './Stage'
-import { Effects } from './Effects'
-import { QUALITY, detectTier, baseCameraDistance } from '../config/quality'
+import { QUALITY, baseCameraDistance } from '../config/quality'
+import { useQuality } from '../state/qualityStore'
 import { useCortex } from '../state/cortexStore'
 
-const quality = QUALITY[detectTier()]
+// Lite never downloads the post-processing library.
+const Effects = lazy(() => import('./Effects').then((m) => ({ default: m.Effects })))
 
 /**
- * The renderer surface. Tone mapping is deliberately OFF on the renderer
- * (NoToneMapping) so bloom runs in linear HDR; the filmic curve is applied as the
- * final post effect. Exposure is kept slightly dark so emissive energy reads as the
- * brightest element in the scene.
+ * The renderer surface. With post-processing on, tone mapping is OFF on the renderer so bloom runs in
+ * linear HDR and the filmic curve is the final effect; without it the renderer tone-maps itself.
+ * Lite draws only on demand (a still picture), so an idle page costs the GPU nothing.
  */
 export function CortexCanvas({ active = true }: { active?: boolean }) {
+  const profile = useQuality((s) => s.profile)
+  const quality = QUALITY[profile]
+
   return (
     <Canvas
-      frameloop={active ? 'always' : 'never'}
-      shadows={{ type: PCFShadowMap }}
+      key={profile} // renderer options (antialias, shadows, materials) are fixed per context
+      frameloop={!active ? 'never' : quality.animate ? 'always' : 'demand'}
+      shadows={quality.shadows ? { type: PCFShadowMap } : false}
       dpr={[1, quality.maxPixelRatio]}
       role="img"
       aria-label="Interactive 3D Engineer's Brain — a cybernetic processor of seven knowledge regions. Use the region navigator (press Tab) to explore by keyboard."
       camera={{ position: [0, 0, 4.5], fov: 45, near: 0.1, far: 20 }}
       gl={{
-        antialias: false,
+        antialias: !quality.effects,
         alpha: true,
         stencil: false,
-        powerPreference: 'high-performance',
-        toneMapping: NoToneMapping,
-        toneMappingExposure: 0.9,
+        powerPreference: quality.animate ? 'high-performance' : 'default',
+        toneMapping: quality.effects ? NoToneMapping : ACESFilmicToneMapping,
+        toneMappingExposure: quality.effects ? 0.9 : 1.15,
       }}
       onPointerMissed={() => useCortex.getState().clearBackground()}
       onCreated={({ gl, camera, size }) => {
@@ -50,8 +55,12 @@ export function CortexCanvas({ active = true }: { active?: boolean }) {
         )
       }}
     >
-      <Stage particleCount={quality.particleCount} />
-      <Effects />
+      <Stage quality={quality} active={active} />
+      {quality.effects && (
+        <Suspense fallback={null}>
+          <Effects msaa={quality.msaa} />
+        </Suspense>
+      )}
     </Canvas>
   )
 }

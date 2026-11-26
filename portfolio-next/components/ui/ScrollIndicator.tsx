@@ -7,46 +7,29 @@ export default function ScrollIndicator() {
   const [visible, setVisible] = useState(false);
   const contMs = useRef(0);
   const lastTick = useRef(performance.now());
-  const isScrolling = useRef(false);
-  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // Eight seconds of continuous scrolling shows the hint. Counted from the scroll events themselves:
+    // a pause of more than 150 ms starts again. Nothing runs while the page is still.
     function onScroll() {
-      isScrolling.current = true;
-      if (scrollTimer.current) clearTimeout(scrollTimer.current);
-      scrollTimer.current = setTimeout(() => {
-        isScrolling.current = false;
-        contMs.current = 0;
-      }, 150);
-    }
-    window.addEventListener('scroll', onScroll, { passive: true });
-
-    let rafId: number;
-    function check(now: number) {
+      const now = performance.now();
       const delta = now - lastTick.current;
       lastTick.current = now;
-      if (isScrolling.current && !visible) {
-        contMs.current += delta;
-        if (contMs.current > 8000) {
-          setVisible(true);
-          if (hideTimeout.current) clearTimeout(hideTimeout.current);
-          hideTimeout.current = setTimeout(() => {
-            setVisible(false);
-            contMs.current = 0;
-          }, 5000);
-        }
+      contMs.current = delta < 150 ? contMs.current + delta : 0;
+      if (contMs.current > 8000) {
+        contMs.current = 0;
+        setVisible(true);
+        if (hideTimeout.current) clearTimeout(hideTimeout.current);
+        hideTimeout.current = setTimeout(() => setVisible(false), 5000);
       }
-      rafId = requestAnimationFrame(check);
     }
-    rafId = requestAnimationFrame(check);
-
+    window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', onScroll);
-      cancelAnimationFrame(rafId);
+      if (hideTimeout.current) clearTimeout(hideTimeout.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  }, []);
 
   return (
     <AnimatePresence>

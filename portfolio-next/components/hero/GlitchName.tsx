@@ -18,7 +18,7 @@ export default function GlitchName() {
       <style>{`
         .glitch-name {
           position: relative;
-          font-size: clamp(2.2rem, 5vw, 3.8rem);
+          font-size: clamp(2rem, min(5vw, 10svh), 3.8rem);
           font-weight: 700;
           letter-spacing: -0.02em;
           line-height: 1.05;

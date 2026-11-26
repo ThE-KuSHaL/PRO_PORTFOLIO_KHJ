@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useLite } from '@/lib/device';
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import HERO_PORTRAIT from '@/lib/portrait-meta.json';
 
 // LightRays is canvas-based — load client-side only
 const LightRays = dynamic(() => import('@/components/ui/LightRays'), { ssr: false });
@@ -31,22 +32,17 @@ export default function PhotoPlaceholder() {
       {!imgError ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src="/img/portrait.webp"
-          srcSet="/img/portrait-m.webp 640w, /img/portrait.webp 1100w"
-          sizes="(max-width: 767px) 100vw, 50vw"
+          src={HERO_PORTRAIT.src}
+          srcSet={HERO_PORTRAIT.srcSet}
+          sizes="(max-width: 767px) 70vw, 45vw"
           alt="Kushal H J"
           fetchPriority="high"
           decoding="async"
-          width={1100}
-          height={1100}
+          width={HERO_PORTRAIT.width}
+          height={HERO_PORTRAIT.height}
           onError={() => setImgError(true)}
           className="hero-portrait"
-          style={{
-            position: 'absolute', inset: 0, width: '100%', height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'left bottom',
-            filter: lite ? 'none' : 'brightness(1.02) contrast(1.02) saturate(0.93) drop-shadow(0 4px 20px rgba(0,0,0,0.4))',
-          }}
+          style={{ filter: lite ? 'none' : 'drop-shadow(0 4px 20px rgba(0,0,0,0.4))' }}
         />
       ) : (
         <div style={{

@@ -5,7 +5,9 @@ import { PerfOverlay } from './ui/PerfOverlay'
 import { RegionNav } from './ui/RegionNav'
 import { Announcer } from './ui/Announcer'
 import { ErrorBoundary } from './ui/ErrorBoundary'
+import { QualitySwitch } from './ui/QualitySwitch'
 import { useKeyboard } from './interaction/useKeyboard'
+import { useQuality } from './state/qualityStore'
 
 /**
  * Project Cortex — application shell.
@@ -18,16 +20,15 @@ import './styles.css'
 
 export function CortexApp({ active = true }: { active?: boolean }) {
   useKeyboard()
+  const profile = useQuality((s) => s.profile)
   return (
-    <div className="cortex-container" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-      
-
-
+    <div className="cortex-container" data-profile={profile} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <ErrorBoundary>
         <CortexCanvas active={active} />
         <PanelLayer />
         <Hud />
         <RegionNav />
+        <QualitySwitch />
         <PerfOverlay />
         <Announcer />
         <LoadingOverlay />

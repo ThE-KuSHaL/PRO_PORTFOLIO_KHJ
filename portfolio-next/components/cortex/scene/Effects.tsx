@@ -12,10 +12,10 @@ import { useQuality } from '../state/qualityStore'
  * Bloom intensity is read from the adaptive quality store so the perf monitor can
  * dial it back on weaker hardware without a remount.
  */
-export function Effects() {
+export function Effects({ msaa }: { msaa: number }) {
   const bloomIntensity = useQuality((s) => s.bloomIntensity)
   return (
-    <EffectComposer multisampling={0}>
+    <EffectComposer multisampling={msaa}>
       <Bloom
         mipmapBlur
         luminanceThreshold={0.62}

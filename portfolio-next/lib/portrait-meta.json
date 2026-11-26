@@ -1,0 +1,6 @@
+{
+ "src": "/img/hero-v3.avif",
+ "srcSet": "/img/hero-v3-m.avif 621w, /img/hero-v3.avif 1035w",
+ "width": 1035,
+ "height": 1600
+}

@@ -1,4 +1,4 @@
-import { Color, MeshPhysicalMaterial, type IUniform } from 'three'
+import { Color, MeshPhysicalMaterial, MeshStandardMaterial, type IUniform } from 'three'
 import { REGION_COLOR_OBJECTS, STRUCTURAL } from '../config/palette'
 import { REGION_COUNT } from '../state/regions'
 
@@ -40,7 +40,7 @@ export interface BrainUniforms {
 }
 
 export interface BrainMaterialBundle {
-  material: MeshPhysicalMaterial
+  material: MeshStandardMaterial
   uniforms: BrainUniforms
 }
 
@@ -245,7 +245,7 @@ const FRAGMENT_EMISSIVE = /* glsl */ `
   totalEmissiveRadiance += cortexEmis;
 `
 
-export function createBrainMaterial(): BrainMaterialBundle {
+export function createBrainMaterial(clearcoat = true): BrainMaterialBundle {
   const uniforms: BrainUniforms = {
     uTime: { value: 0 },
     uColors: { value: packColors() },
@@ -258,15 +258,17 @@ export function createBrainMaterial(): BrainMaterialBundle {
     uMicroDetail: { value: 1 },
   }
 
-  const material = new MeshPhysicalMaterial({
+  const base = {
     color: new Color(STRUCTURAL.graphite),
     metalness: 0.34, // subtle metallic response — machined PCB substrate, not matte clay
     roughness: 0.70,
-    clearcoat: 1.0, // AAA Polish: Full clearcoat to embed circuitry
-    clearcoatRoughness: 0.1, // Smooth glossy shell
     envMapIntensity: 0.85, // soft ambient reflections catch the studio env on the shoulders
     dithering: true,
-  })
+  }
+  // Clearcoat is a second specular layer: the Lite profile uses the plain standard material instead.
+  const material = clearcoat
+    ? new MeshPhysicalMaterial({ ...base, clearcoat: 1.0, clearcoatRoughness: 0.1 })
+    : new MeshStandardMaterial(base)
 
   material.onBeforeCompile = (shader) => {
     // Guard the shader patch (docs/13 "failed shader compilation handled"): if string
@@ -299,7 +301,7 @@ export function createBrainMaterial(): BrainMaterialBundle {
     }
   }
 
-  material.customProgramCacheKey = () => 'cortex-master-material-v11'
+  material.customProgramCacheKey = () => `cortex-master-material-v12-${clearcoat ? 'coat' : 'plain'}`
 
   return { material, uniforms }
 }

@@ -32,6 +32,8 @@
 /* (drei OrbitControls also sets touch-action:none inline on the canvas wrapper, hence the wildcard) */
 @media (pointer: coarse), (max-width: 720px) { .cortex-container, .cortex-container * { touch-action: pan-y !important; } }
 .hud__hint-touch { display: none; }
+/* the instructions follow the input, not the width: tablets are touch too */
+@media (hover: none) { .hud .hud__hint-desktop { display: none; } .hud .hud__hint-touch { display: inline; } }
 
 /* ---- HUD overlay ---- */
 .hud {
@@ -50,11 +52,14 @@
 
 .hud__title {
   margin: 0;
-  font-size: clamp(22px, 3vw, 40px);
-  font-weight: 600;
-  letter-spacing: 0.14em;
+  line-height: 1.15;
+  font-family: var(--font-title), var(--font);
+  font-size: clamp(26px, 3.2vw, 48px);
+  font-weight: 700;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--text);
+  color: #effffc;
+  text-shadow: 0.025em 0.025em 0 #04121f, 0.048em 0.048em 0 #14b8a6, 0 0 0.5em rgba(45, 212, 191, 0.28);
 }
 
 .hud__subtitle {
@@ -66,14 +71,20 @@
   opacity: 0.85;
 }
 
-.hud__lede {
-  margin: 18px 0 0;
-  font-size: clamp(12px, 1.05vw, 14px);
-  line-height: 1.6;
-  color: var(--text-dim);
-  max-width: 34ch;
-  transition: opacity 0.4s ease;
+/* the direct instruction under the subtitle: the one thing a visitor needs to read */
+.hud__cta {
+  margin: 16px 0 0;
+  padding-left: 12px;
+  border-left: 3px solid #2dd4bf;
+  max-width: 28ch;
+  font-size: clamp(14px, 1.2vw, 17px);
+  font-weight: 500;
+  line-height: 1.5;
+  color: #eafffb;
+  text-shadow: 0 0 8px #020712, 0 0 14px #020712;
 }
+
+.hud__hint, .hud__status { text-shadow: 0 0 6px #020712, 0 0 12px #020712; }
 
 .hud__hint {
   position: absolute;
@@ -91,12 +102,75 @@
 .hud__status {
   position: absolute;
   bottom: clamp(18px, 3vw, 40px);
-  right: clamp(20px, 4vw, 56px);
+  right: 5.5rem; /* clears the page's up/down buttons in the corner */
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #97a4b4;
 }
+/* narrower windows: lift the hint above the quality buttons and the status line */
+@media (min-width: 721px) and (max-width: 1500px) { .hud__hint { bottom: 5rem; } }
+
+/* ---- Quality profiles (bottom left) ---- */
+.quality {
+  position: absolute;
+  left: clamp(12px, 4vw, 56px);
+  bottom: clamp(14px, 2.4vw, 34px);
+  z-index: 16;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.quality__group {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(7, 12, 20, 0.86);
+  border: 1px solid rgba(110, 168, 255, 0.24);
+}
+.quality__btn, .quality__info {
+  min-height: 30px;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: #a4b0c0;
+  background: transparent;
+  transition: background-color 0.2s, color 0.2s;
+}
+.quality__btn { padding: 0 11px; border-radius: 7px; font-size: 12px; font-weight: 500; }
+.quality__btn:hover, .quality__info:hover { color: #f0f4ff; }
+.quality__btn[aria-pressed='true'] { color: #04121a; background: #22d3ee; font-weight: 600; }
+.quality__info {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(7, 12, 20, 0.86);
+  border: 1px solid rgba(110, 168, 255, 0.24);
+}
+.quality__info[aria-expanded='true'] { color: #22d3ee; border-color: #22d3ee; }
+.quality__note {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  width: max-content;
+  max-width: min(17rem, calc(100vw - 24px));
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(7, 12, 20, 0.96);
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+.quality__note p { margin: 0; font-size: 12.5px; line-height: 1.65; color: #c6d2e2; }
+.quality__note strong { font-weight: 600; color: #f0f4ff; }
+@media (pointer: coarse) { .quality__btn { min-height: 36px; } .quality__info { width: 40px; height: 40px; } }
+
+/* The still (Lite) profile also drops the glowing, blurring card effects. */
+.cortex-container[data-profile='lite'] .connector__path,
+.cortex-container[data-profile='lite'] .connector__node { animation: none; filter: none; }
+.cortex-container[data-profile='lite'] .panel { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(11, 15, 20, 0.94); }
 
 /* ---- Loading screen ---- */
 .loader {
@@ -222,6 +296,7 @@
 }
 
 .panel__close {
+  z-index: 2; /* the animated header would otherwise sit on top and swallow the tap */
   position: absolute;
   top: 8px;
   right: 8px;
@@ -422,12 +497,30 @@
 
 /* ---- Mobile HUD trims ---- */
 @media (max-width: 720px) {
-  /* The portfolio section already shows the heading — drop the duplicate to stop overlap. */
-  .hud__heading { display: none; }
+  /* the section's only heading: kept compact, below the floating menu button */
+  .hud__heading { top: 4.25rem; left: 1.25rem; right: 1.25rem; }
+  .hud__title { font-size: 1.65rem; letter-spacing: 0.06em; }
+  .hud__subtitle { font-size: 0.7rem; letter-spacing: 0.2em; }
+  .hud__cta { font-size: 13.5px; margin-top: 10px; }
   .hud__hint-desktop { display: none; }
   .hud__hint-touch { display: inline; }
-  .hud__hint { top: 12px; bottom: auto; left: 50%; font-size: 10px; letter-spacing: 0.12em; }
-  .hud__status { top: 32px; bottom: auto; right: auto; left: 50%; transform: translateX(-50%); font-size: 10px; }
+  .hud__hint { bottom: 5.9rem; left: 50%; font-size: 10px; letter-spacing: 0.12em; }
+  .hud__status { bottom: 4.6rem; right: auto; left: 50%; transform: translateX(-50%); font-size: 10px; white-space: nowrap; }
+  .quality { left: 12px; bottom: 14px; gap: 6px; }
+  .quality__btn { padding: 0 9px; }
+  /* an open knowledge card takes the bottom of the screen */
+  .quality[data-panel-open='true'] { display: none; }
+  .cortex-container:has(.panel-dock .panel-slot) :is(.hud__hint, .hud__status) { visibility: hidden; }
+}
+
+/* ---- Short screens (phones held sideways, heavy zoom): compact heading, controls stay on screen ---- */
+@media (max-height: 560px) {
+  .hud__heading { top: 14px; }
+  .hud__title { font-size: 1.25rem; }
+  .hud__subtitle { font-size: 0.65rem; }
+  .hud__cta { font-size: 12px; margin-top: 6px; max-width: 24ch; }
+  .hud__hint { display: none; }
+  .quality { bottom: 10px; }
 }
 
 /* ---- Accessibility ---- */
@@ -453,8 +546,8 @@
 .region-nav {
   position: absolute;
   left: 16px;
-  bottom: 16px;
-  z-index: 15;
+  bottom: 84px; /* above the quality buttons */
+  z-index: 17;
   opacity: 0;
   pointer-events: none;
   clip-path: inset(50%);

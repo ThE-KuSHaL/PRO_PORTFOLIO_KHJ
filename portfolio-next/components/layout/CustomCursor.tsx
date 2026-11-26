@@ -19,74 +19,22 @@ export default function CustomCursor() {
     const el = containerRef.current;
     if (!el) return;
 
-    // ── State tracked as plain refs (no React re-renders) ──
-    let mx = -200, my = -200;          // mouse position
-    let isHover   = false;
-    let isDown    = false;
+    // Position follows the mouse, at most once per frame. The sway, hover and press looks are CSS
+    // (globals.css, ".cur"), so nothing here runs while the mouse rests.
+    let mx = -200, my = -200;
     let raf: number | null = null;
-
-    // Arm sway state — 4 arms, each with its own phase clock
-    const armPhases = [0, 0.4, 0.8, 0.2].map(p => p * Math.PI * 2);
-    const armSpeeds = [2.8, 3.2, 2.6, 3.5].map(s => (Math.PI * 2) / s);
-    let t = 0;
-    let lastTs = performance.now();
-
-    // ── DOM refs for every moving part ──
-    const dot  = el.querySelector<HTMLElement>('.cur-dot')!;
-    const arms = Array.from(el.querySelectorAll<HTMLElement>('.cur-arm'));
-
-    function tick(ts: number) {
-      const dt = Math.min((ts - lastTs) / 1000, 0.05); // seconds, capped
-      lastTs = ts;
-      t += dt;
-
-      if (!el) return;
-
-      // Move container to exact pointer position — translate3d = GPU composited
-      el.style.transform = `translate3d(${mx}px,${my}px,0)`;
-
-      const perpAmp  = isHover ? 1.6 : 0.8;
-      const rotAmp   = isHover ? 2.2 : 1.1;
-      const clickScl = isDown  ? 0   : 1;
-
-      arms.forEach((arm, i) => {
-        const vert = i < 2; // up=0, right=1, down=2, left=3
-        const phase  = armPhases[i] + t * armSpeeds[i];
-        
-        // If clicked, snap to perfectly centered cross (+ shape)
-        const drift  = isDown ? 0 : Math.sin(phase) * perpAmp;
-        const rot    = isDown ? 0 : Math.cos(phase) * rotAmp;
-        const scl    = isDown ? 1.5 : (isHover ? 0.8 : 1); // slightly enlarge the plus on click
-
-        const tx = vert  ? drift : 0;
-        const ty = !vert ? drift : 0;
-
-        arm.style.transform = `translate(${tx}px,${ty}px) rotate(${rot}deg) scale(${scl})`;
-      });
-
-      // Dot: scale up when hovering
-      const dotScale = isDown ? 0.5 : (isHover ? 1.8 : 1);
-      dot.style.transform = `translate(-50%,-50%) scale(${dotScale})`;
-      dot.style.boxShadow = isHover
-        ? '0 0 0 2px rgba(6,182,212,0.35), 0 0 12px rgba(6,182,212,0.6)'
-        : isDown ? 'none'
-        : '0 0 6px #06b6d4';
-
-      raf = requestAnimationFrame(tick);
-    }
-
-    raf = requestAnimationFrame(tick);
+    const place = () => { raf = null; el.style.transform = `translate3d(${mx}px,${my}px,0)`; };
 
     // ── Event listeners — all passive or minimal ──
-    const onMove = (e: MouseEvent) => { mx = e.clientX; my = e.clientY; };
+    const onMove = (e: MouseEvent) => { mx = e.clientX; my = e.clientY; if (raf === null) raf = requestAnimationFrame(place); };
 
     const onEnter = () => { el.style.opacity = '1'; };
     const onLeave = () => { el.style.opacity = '0'; };
-    const onDown  = () => { isDown = true; };
-    const onUp    = () => { isDown = false; };
+    const onDown  = () => { el.dataset.down = 'true'; };
+    const onUp    = () => { el.dataset.down = 'false'; };
 
-    const onHoverIn  = () => { isHover = true; };
-    const onHoverOut = () => { isHover = false; };
+    const onHoverIn  = () => { el.dataset.hover = 'true'; };
+    const onHoverOut = () => { el.dataset.hover = 'false'; };
 
     // Use delegation — works for all dynamically mounted elements too
     const onOver = (e: MouseEvent) => {
@@ -124,6 +72,7 @@ export default function CustomCursor() {
   return (
     <div
       ref={containerRef}
+      className="cur"
       aria-hidden="true"
       style={{
         position: 'fixed', top: 0, left: 0,
@@ -135,50 +84,11 @@ export default function CustomCursor() {
         transition: 'opacity 0.15s',
       }}
     >
-      {/* Center dot */}
-      <div
-        className="cur-dot"
-        style={{
-          position: 'absolute',
-          width: 5, height: 5,
-          borderRadius: '50%',
-          background: '#06b6d4',
-          willChange: 'transform, box-shadow',
-          transition: 'box-shadow 60ms linear',
-        }}
-      />
-
-      {/* Up arm */}
-      <div className="cur-arm" style={{
-        position: 'absolute', background: '#06b6d4',
-        width: 1.5, height: 11, left: -0.75, bottom: 5,
-        transformOrigin: 'bottom center',
-        willChange: 'transform',
-      }} />
-
-      {/* Right arm */}
-      <div className="cur-arm" style={{
-        position: 'absolute', background: '#06b6d4',
-        height: 1.5, width: 11, top: -0.75, left: 5,
-        transformOrigin: 'left center',
-        willChange: 'transform',
-      }} />
-
-      {/* Down arm */}
-      <div className="cur-arm" style={{
-        position: 'absolute', background: '#06b6d4',
-        width: 1.5, height: 11, left: -0.75, top: 5,
-        transformOrigin: 'top center',
-        willChange: 'transform',
-      }} />
-
-      {/* Left arm */}
-      <div className="cur-arm" style={{
-        position: 'absolute', background: '#06b6d4',
-        height: 1.5, width: 11, top: -0.75, right: 5,
-        transformOrigin: 'right center',
-        willChange: 'transform',
-      }} />
+      <div className="cur-dot" />
+      <div className="cur-arm cur-up" />
+      <div className="cur-arm cur-right" />
+      <div className="cur-arm cur-down" />
+      <div className="cur-arm cur-left" />
     </div>
   );
 }

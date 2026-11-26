@@ -16,21 +16,17 @@ export function Hud() {
   return (
     <div className="hud">
       <header className="hud__heading">
-        <h1 className="hud__title">Engineer&rsquo;s Brain</h1>
+        <h2 className="hud__title">Engineer&rsquo;s Brain</h2>
         <p className="hud__subtitle">Interactive Knowledge Architecture</p>
-        <p className="hud__lede" style={{ opacity: active > 0 ? 0 : undefined }}>
-          A cybernetic processor whose regions map an engineer&rsquo;s knowledge. Every
-          illuminated pathway is computation — not decoration.
+        <p className="hud__cta">
+          <span className="hud__hint-desktop">Click on the different parts of the brain to know more.</span>
+          <span className="hud__hint-touch">Tap the different parts of the brain to know more.</span>
         </p>
       </header>
 
       <div className="hud__hint">
-        <span className="hud__hint-desktop">
-          {active > 0
-            ? 'Click a region to close · Esc to reset'
-            : 'Hover a region · Click to explore · Drag the brain to rotate'}
-        </span>
-        <span className="hud__hint-touch">{active > 0 ? 'Tap a region to close' : 'Tap a region · Drag the brain to rotate'}</span>
+        <span className="hud__hint-desktop">{active > 0 ? 'Click it again to close · Esc to reset' : 'Drag the brain to rotate'}</span>
+        <span className="hud__hint-touch">{active > 0 ? 'Tap it again to close' : 'Drag sideways to rotate'}</span>
       </div>
       <div className="hud__status">
         {stageLabel(active).toUpperCase()} &middot; {active} / 7 active

@@ -55,17 +55,17 @@ export default function ScrollNav() {
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ x: -60, opacity: 0 }}
+          initial={{ x: 60, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          exit={{ x: -60, opacity: 0 }}
+          exit={{ x: 60, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           style={{
+            // bottom-right: on short screens the old left position sat on top of the text
             position: 'fixed',
-            left: 'calc(var(--sidebar-width, 200px) + 24px)',
-            bottom: '5rem',
+            right: '1.25rem',
+            bottom: '1.25rem',
             display: 'flex', flexDirection: 'column', gap: 8,
             zIndex: 40,
-            transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
         >
           <button onClick={handleUp} style={btnStyle} aria-label="Scroll up" data-cursor>

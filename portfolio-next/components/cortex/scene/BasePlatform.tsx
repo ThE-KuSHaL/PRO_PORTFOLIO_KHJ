@@ -33,6 +33,9 @@ const TAU = Math.PI * 2
 function makeCircuitDiscMaterial(): ShaderMaterial {
   return new ShaderMaterial({
     side: DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
     uniforms: { uTime: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec2 vUv;
@@ -60,11 +63,16 @@ function makeCircuitDiscMaterial(): ShaderMaterial {
         vec3 copper = vec3(0.30, 0.17, 0.075);
         vec3 trace = vec3(0.0);
 
+        // Every edge below is widened by the size of a pixel on the disc, and detail finer than a pixel
+        // fades to its average: seen at a shallow angle, hard-edged lines broke into zig-zags.
+        float px = length(fwidth(c)) * 2.0;     // one pixel, in units of r
+
         // Concentric distribution traces (quantized radii, constant width).
         float ringId = floor(r * 22.0);
         float ringD = abs(fract(r * 22.0) - 0.5);
         float ringOn = step(0.35, h21(vec2(ringId, 3.7)));
-        float ring = ringOn * (1.0 - smoothstep(0.06, 0.11, ringD));
+        float ringAA = px * 22.0;
+        float ring = ringOn * mix(1.0 - smoothstep(0.06 - ringAA, 0.11 + ringAA, ringD), 0.17, smoothstep(0.35, 0.8, ringAA));
 
         // Radial local traces with a 45-degree-style jog (angle shifts by ring band).
         float sector = ang / 6.2831853 + 0.5;
@@ -72,12 +80,16 @@ function makeCircuitDiscMaterial(): ShaderMaterial {
         float spokes = fract((sector + jog) * 96.0);
         float spokeD = abs(spokes - 0.5);
         float spokeOn = step(0.55, h21(vec2(floor((sector + jog) * 96.0), ringId)));
-        float spoke = spokeOn * (1.0 - smoothstep(0.10, 0.18, spokeD)) * step(0.12, r) * (1.0 - step(0.97, r));
+        // spoke spacing in pixels, worked out from the radius (fwidth of the angle would break at its seam)
+        float spokeAA = px * 96.0 / (6.2831853 * max(r, 0.05));
+        float spokeLine = mix(1.0 - smoothstep(0.10 - spokeAA, 0.18 + spokeAA, spokeD), 0.28, smoothstep(0.3, 0.7, spokeAA));
+        float spoke = spokeOn * spokeLine * smoothstep(0.12 - px, 0.12 + px, r) * (1.0 - smoothstep(0.97 - px, 0.97 + px, r));
 
         float routing = max(ring * step(0.12, r), spoke * ring); // spokes live between rings
 
         // Vias where spokes meet rings.
-        float via = spokeOn * ringOn * (1.0 - smoothstep(0.05, 0.09, length(vec2(spokeD * 0.6, ringD))));
+        float via = spokeOn * ringOn * (1.0 - smoothstep(0.05, 0.09 + ringAA, length(vec2(spokeD * 0.6, ringD))))
+                  * (1.0 - smoothstep(0.25, 0.55, max(ringAA, spokeAA)));
 
         // Blinking status LEDs at fixed polar seats (async phases via hash).
         float led = 0.0;
@@ -103,7 +115,7 @@ function makeCircuitDiscMaterial(): ShaderMaterial {
   })
 }
 
-export function BasePlatform() {
+export function BasePlatform({ animate, glass }: { animate: boolean; glass: boolean }) {
   const ringMat = useRef<MeshStandardMaterial>(null)
   const halo1 = useRef<MeshStandardMaterial>(null)
   const halo2 = useRef<MeshStandardMaterial>(null)
@@ -126,7 +138,7 @@ export function BasePlatform() {
     const grooves: Matrix4[] = []
     for (let i = 0; i < 72; i++) {
       const a = (i / 72) * TAU
-      obj.position.set(Math.cos(a) * 1.52, 0.082, Math.sin(a) * 1.52)
+      obj.position.set(Math.cos(a) * 1.52, 0.0845, Math.sin(a) * 1.52) // proud of the base top (y 0.085): level with it, they flickered
       obj.rotation.set(0, -a, 0)
       obj.scale.set(0.05, 0.006, 0.008)
       obj.updateMatrix()
@@ -201,6 +213,7 @@ export function BasePlatform() {
   }, [])
 
   useFrame((state) => {
+    if (!animate) return // still profile: the lights hold their resting values
     const t = state.clock.elapsedTime
     circuitMat.uniforms.uTime.value = t
     if (ringMat.current) {
@@ -232,16 +245,20 @@ export function BasePlatform() {
       {/* L1 — structural engineered sapphire base */}
       <mesh receiveShadow castShadow position={[0, -0.04, 0]}>
         <cylinderGeometry args={[1.55, 1.65, 0.25, 96]} />
-        <meshPhysicalMaterial 
-          color="#070a10"
-          transmission={0.85}
-          opacity={1}
-          metalness={0.1}
-          roughness={0.25}
-          ior={1.52}
-          thickness={0.5}
-          transparent
-        />
+        {glass ? (
+          <meshPhysicalMaterial
+            color="#070a10"
+            transmission={0.85}
+            opacity={1}
+            metalness={0.1}
+            roughness={0.25}
+            ior={1.52}
+            thickness={0.5}
+            transparent
+          />
+        ) : (
+          <meshStandardMaterial color="#0b111b" metalness={0.55} roughness={0.35} />
+        )}
       </mesh>
 
       {/* L2 — brushed titanium primary ring */}
@@ -251,8 +268,9 @@ export function BasePlatform() {
       </mesh>
       <instancedMesh ref={setInst(grooveMatrices)} args={[grooveGeo, grooveMat, grooveMatrices.length]} frustumCulled={false} />
 
-      {/* L3 — PCB circuit disc: procedural routing + vias + blinking status LEDs */}
-      <mesh position={[0, 0.085, 0]} rotation={[-Math.PI / 2, 0, 0]} material={circuitMat}>
+      {/* L3 — PCB circuit disc: procedural routing + vias + blinking status LEDs. Just above the base top:
+          at the same height the two surfaces fought for every pixel. */}
+      <mesh position={[0, 0.0872, 0]} rotation={[-Math.PI / 2, 0, 0]} material={circuitMat}>
         <circleGeometry args={[1.45, 96]} />
       </mesh>
 
@@ -328,20 +346,24 @@ export function BasePlatform() {
       {/* Heavy translucent sapphire stem */}
       <mesh position={[0, 0.42, 0]}>
         <cylinderGeometry args={[0.08, 0.08, 0.8, 32]} />
-        <meshPhysicalMaterial 
-          color="#070a10"
-          transmission={0.85}
-          opacity={1}
-          metalness={0.1}
-          roughness={0.15}
-          ior={1.52}
-          thickness={0.2}
-          transparent
-        />
+        {glass ? (
+          <meshPhysicalMaterial
+            color="#070a10"
+            transmission={0.85}
+            opacity={1}
+            metalness={0.1}
+            roughness={0.15}
+            ior={1.52}
+            thickness={0.2}
+            transparent
+          />
+        ) : (
+          <meshStandardMaterial color="#101a28" metalness={0.6} roughness={0.3} />
+        )}
       </mesh>
       
       {/* Power conduit floats around the thin stem */}
-      <mesh ref={conduit} position={[0, 0.14, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh ref={conduit} visible={animate} position={[0, 0.14, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.08, 0.008, 10, 40]} />
         <meshStandardMaterial
           ref={conduitMat}

@@ -63,16 +63,16 @@ export default function AboutSection() {
             }}
           >
             {/* Circular photo container — overflow:hidden clips the image cleanly */}
-            <div style={{ width: 250, height: 250, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.05)', position: 'relative' }}>
+            <div style={{ width: 'min(17.5rem, 72vw)', aspectRatio: '1', borderRadius: '50%', overflow: 'hidden', border: '1.5px solid rgba(6,182,212,0.4)', background: 'rgba(6,182,212,0.05)', position: 'relative' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/img/pfp.webp"
+                src="/img/about-v3.avif"
                 alt="Kushal H J"
-                width={250}
-                height={250}
+                width={720}
+                height={720}
                 loading="lazy"
                 decoding="async"
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
               />
             </div>
             {/* Outer ring — sibling, not child, so it renders correctly outside clip on all browsers */}

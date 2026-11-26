@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useLayoutStore } from '@/store/layoutStore';
 import { useIsMobile } from '@/lib/device';
 import { navLinks } from '@/lib/data';
+import CpuCore from './CpuCore';
 import {
   Home, User, GraduationCap, Cpu, FolderOpen,
-  Rocket, GitBranch, Mail, Menu, X, ChevronRight,
+  Rocket, GitBranch, Mail, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 
 const ICONS = [Home, User, GraduationCap, Cpu, FolderOpen, Rocket, GitBranch, Mail];
@@ -24,7 +25,9 @@ export default function Sidebar() {
           if (e.isIntersecting) setActiveSection(e.target.id);
         }
       },
-      { threshold: 0.35 }
+      // Active = the section crossing a thin band just above mid-screen. A visibility threshold
+      // also matched a neighbour that only touched the screen edge.
+      { rootMargin: '-45% 0px -54% 0px', threshold: 0 }
     );
     document.querySelectorAll('section[id]').forEach((s) => obsRef.current?.observe(s));
     return () => obsRef.current?.disconnect();
@@ -38,11 +41,24 @@ export default function Sidebar() {
 
   const sectionId = (href: string) => href.replace('#', '');
 
+  // Narrow desktop windows (tablets, high zoom) start collapsed so the content keeps its room.
+  useEffect(() => {
+    const narrow = window.matchMedia('(min-width: 768px) and (max-width: 1099px)');
+    const apply = () => setSidebarCollapsed(narrow.matches);
+    apply();
+    narrow.addEventListener('change', apply);
+    return () => narrow.removeEventListener('change', apply);
+  }, [setSidebarCollapsed]);
+
+  // The phone drawer is always the full-width version.
+  const collapsed = sidebarCollapsed && !isMobile;
+  // rem, so the sidebar grows with the fluid root size on large screens
+  const width = collapsed ? '3.75rem' : '12.5rem';
+
   // Inject CSS variable for other components (like section padding)
   useEffect(() => {
-    const w = isMobile ? (mobileOpen ? 200 : 0) : (sidebarCollapsed ? 60 : 200);
-    document.documentElement.style.setProperty('--sidebar-width', `${w}px`);
-  }, [sidebarCollapsed, isMobile, mobileOpen]);
+    document.documentElement.style.setProperty('--sidebar-width', isMobile && !mobileOpen ? '0rem' : width);
+  }, [width, isMobile, mobileOpen]);
 
   return (
     <>
@@ -60,110 +76,57 @@ export default function Sidebar() {
       <aside
         role="navigation"
         aria-label="Main navigation"
+        className="side"
+        data-collapsed={collapsed}
+        data-hidden={isMobile && !mobileOpen}
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          height: '100vh',
-          zIndex: 100,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: sidebarCollapsed ? 'center' : 'flex-start',
-          padding: '1.5rem 0',
-          width: sidebarCollapsed ? 60 : 200,
-          background: 'rgba(3,8,16,0.85)',
-          backdropFilter: 'blur(20px)',
-          borderRight: '1px solid rgba(99,102,241,0.1)',
-          transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1), transform 0.3s ease',
+          width,
           transform: (mobileOpen || !isMobile) ? 'translateX(0)' : 'translateX(-100%)',
         }}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 mb-8 w-full">
-          <div
-            style={{
-              width: 32, height: 32,
-              borderRadius: '50%',
-              border: '1.5px solid #06b6d4',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 700, color: '#06b6d4', flexShrink: 0,
-            }}
-          >
-            KHJ
-          </div>
-          {!sidebarCollapsed && (
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap' }}>
-              Kushal H J
-            </span>
+        {/* Header: the processor mark with the name under it, plus the collapse control, always on screen */}
+        <div className="side-head">
+          <button type="button" className="cpu-core" onClick={() => scrollTo(navLinks[0].href)} aria-label="Back to the top">
+            <CpuCore />
+          </button>
+          {!collapsed && <span className="side-name">Kushal H J</span>}
+          {!isMobile && (
+            <button
+              type="button"
+              className="side-toggle"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {collapsed ? <PanelLeftOpen size="1.05rem" /> : <PanelLeftClose size="1.05rem" />}
+            </button>
           )}
         </div>
 
-        {/* Nav links */}
-        <ul className="flex flex-col gap-1 w-full px-2 flex-1">
+        {/* Nav links: scrolls on very short screens instead of pushing anything off */}
+        <ul className="side-list">
           {navLinks.map((link, i) => {
             const Icon = ICONS[i];
             const isact = activeSection === sectionId(link.href);
             return (
               <li key={link.href}>
                 <button
+                  type="button"
+                  className="side-link"
                   onClick={() => scrollTo(link.href)}
-                  title={sidebarCollapsed ? link.label : undefined}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: isact ? 'rgba(6,182,212,0.1)' : 'transparent',
-                    color: isact ? '#06b6d4' : 'rgba(255,255,255,0.45)',
-                    transition: 'background 0.2s, color 0.2s',
-                    textAlign: 'left',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isact) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isact) (e.currentTarget as HTMLElement).style.background = 'transparent';
-                  }}
+                  title={collapsed ? link.label : undefined}
+                  aria-label={link.label}
+                  aria-current={isact ? 'true' : undefined}
                 >
-                  <Icon size={15} style={{ flexShrink: 0 }} />
-                  {!sidebarCollapsed && (
-                    <span style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap' }}>
-                      {link.label}
-                    </span>
-                  )}
-                  {!sidebarCollapsed && isact && (
-                    <ChevronRight size={12} style={{ marginLeft: 'auto' }} />
-                  )}
+                  <Icon size="0.95rem" style={{ flexShrink: 0 }} />
+                  {!collapsed && <span>{link.label}</span>}
+                  {!collapsed && isact && <ChevronRight size="0.75rem" style={{ marginLeft: 'auto' }} />}
                 </button>
               </li>
             );
           })}
         </ul>
-
-        {/* Collapse toggle — desktop only */}
-        <button
-          className="hidden md:flex"
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto',
-            width: 28, height: 28,
-            borderRadius: '50%',
-            border: '1px solid rgba(99,102,241,0.3)',
-            background: 'transparent',
-            color: 'rgba(255,255,255,0.4)',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-          }}
-          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          <ChevronRight size={12} style={{ transform: sidebarCollapsed ? 'rotate(0deg)' : 'rotate(180deg)', transition: 'transform 0.3s' }} />
-        </button>
       </aside>
 
       {/* Mobile overlay */}
